@@ -83,6 +83,21 @@ const sql = `
   ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS centro_custo TEXT;
   ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS categoria TEXT;
   ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS observacao TEXT;
+
+  -- dados do pagamento e programação
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS tipo_pagamento TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS pagamento_favorecido TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS pagamento_cpf_cnpj TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS pagamento_banco TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS pagamento_agencia TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS pagamento_conta TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS pagamento_pix_tipo_chave TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS pagamento_pix_chave TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS boleto_arquivo TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS boleto_arquivo_nome TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS data_programacao DATE;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS nota_fiscal_arquivo TEXT;
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS nota_fiscal_arquivo_nome TEXT;
 `
 
 async function main() {

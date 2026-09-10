@@ -42,6 +42,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+async function requestForm<T>(path: string, formData: FormData): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new ApiError(body?.error ?? `Request failed (${res.status})`)
+  }
+
+  return res.json() as Promise<T>
+}
+
 export function login(username: string, password: string, remember: boolean) {
   return request<{ user: User }>('/auth/login', {
     method: 'POST',
@@ -165,13 +180,31 @@ export type NotaPayload = {
   centro_custo: string
   categoria: string
   observacao: string
+  tipo_pagamento: string
+  pagamento_favorecido: string
+  pagamento_cpf_cnpj: string
+  pagamento_banco: string
+  pagamento_agencia: string
+  pagamento_conta: string
+  pagamento_pix_tipo_chave: string
+  pagamento_pix_chave: string
+  data_programacao: string
 }
 
-export function createNota(payload: NotaPayload) {
-  return request<{ nota: unknown }>('/notas', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
+export type NotaFiles = {
+  boleto?: File | null
+  notaFiscal?: File | null
+}
+
+export function createNota(payload: NotaPayload, files: NotaFiles = {}) {
+  const formData = new FormData()
+  for (const [key, value] of Object.entries(payload)) {
+    if (value !== null && value !== undefined) formData.append(key, String(value))
+  }
+  if (files.boleto) formData.append('boleto_arquivo', files.boleto)
+  if (files.notaFiscal) formData.append('nota_fiscal_arquivo', files.notaFiscal)
+
+  return requestForm<{ nota: unknown }>('/notas', formData)
 }
 
 export type Regional = { id: number; nome: string }
@@ -197,4 +230,10 @@ export function createSeccional(nome: string, regional: string) {
     method: 'POST',
     body: JSON.stringify({ nome, regional }),
   })
+}
+
+export type CentroCusto = { centro_custo: string; categorias: string[] }
+
+export function listCentrosCusto() {
+  return request<{ data: CentroCusto[] }>('/centros-custo')
 }

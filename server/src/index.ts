@@ -9,6 +9,7 @@ import { fornecedoresRouter } from './routes/fornecedores.js'
 import { notasRouter } from './routes/notas.js'
 import { regionaisRouter } from './routes/regionais.js'
 import { seccionaisRouter } from './routes/seccionais.js'
+import { centrosCustoRouter } from './routes/centrosCusto.js'
 
 const app = express()
 const port = process.env.PORT ?? 3001
@@ -22,6 +23,7 @@ app.use('/api/fornecedores', fornecedoresRouter)
 app.use('/api/notas', notasRouter)
 app.use('/api/regionais', regionaisRouter)
 app.use('/api/seccionais', seccionaisRouter)
+app.use('/api/centros-custo', centrosCustoRouter)
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err)

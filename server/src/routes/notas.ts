@@ -1,26 +1,18 @@
+import path from 'path'
+import { promises as fs } from 'fs'
 import { Router } from 'express'
+import type { NextFunction, Request, Response } from 'express'
 import { pool } from '../db.js'
 import { requireAuth } from '../middleware/requireAuth.js'
+import { isCategoriaValida, isCentroCustoValido } from '../centrosCusto.js'
+import { UPLOADS_DIR, uploadNotaArquivos } from '../uploads.js'
 
 export const notasRouter = Router()
 notasRouter.use(requireAuth)
 
 export const OPERACOES = ['Administrativo', 'Comercial', 'Logística', 'Perdas', 'PLPT', 'Técnica'] as const
 export const CONTRATOS = ['Âncora', 'DPL', 'LV AT', 'PLPT', 'Transmissão', 'Transporte'] as const
-export const CENTROS_CUSTO = [
-  'ALIMENTAÇÃO_HOSPEDAGEM',
-  'ALMOXARIFADO',
-  'DESP_ADMINISTRATIVA',
-  'DESP_FIXA',
-  'DP_PESSOAL',
-  'FROTA',
-  'MANUTENÇÃO_PREDIAL',
-  'OBRA_OPERACIONAL',
-  'OBRA_TRANSMISSAO',
-  'TAXAS_E_TRIBUTOS',
-  'TI',
-] as const
-export const CATEGORIAS = ['ALIMENTAÇÃO', 'HOSPEDAGEM', 'ALIMENTAÇÃO_HOSPEDAGEM'] as const
+export const TIPOS_PAGAMENTO = ['Boleto', 'Pix', 'Transferência'] as const
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v.trim() : ''
@@ -30,8 +22,30 @@ function includes<T extends string>(list: readonly T[], value: string): value is
   return (list as readonly string[]).includes(value)
 }
 
-notasRouter.post('/', async (req, res) => {
+function uploadMiddleware(req: Request, res: Response, next: NextFunction) {
+  uploadNotaArquivos(req, res, (err: unknown) => {
+    if (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Erro ao enviar arquivo.' })
+      return
+    }
+    next()
+  })
+}
+
+function getUploadedFile(req: Request, field: string): Express.Multer.File | undefined {
+  const files = req.files as Record<string, Express.Multer.File[]> | undefined
+  return files?.[field]?.[0]
+}
+
+async function cleanupFiles(...files: (Express.Multer.File | undefined)[]) {
+  await Promise.all(files.filter((f): f is Express.Multer.File => !!f).map((f) => fs.unlink(f.path).catch(() => {})))
+}
+
+notasRouter.post('/', uploadMiddleware, async (req, res) => {
   const b = req.body ?? {}
+  const boletoArquivo = getUploadedFile(req, 'boleto_arquivo')
+  const notaFiscalArquivo = getUploadedFile(req, 'nota_fiscal_arquivo')
+
   const numero = str(b.numero)
   const operacao = str(b.operacao)
   const regional = str(b.regional)
@@ -48,6 +62,15 @@ notasRouter.post('/', async (req, res) => {
   const centro_custo = str(b.centro_custo)
   const categoria = str(b.categoria)
   const observacao = str(b.observacao)
+  const tipo_pagamento = str(b.tipo_pagamento)
+  const pagamento_favorecido = str(b.pagamento_favorecido)
+  const pagamento_cpf_cnpj = str(b.pagamento_cpf_cnpj)
+  const pagamento_banco = str(b.pagamento_banco)
+  const pagamento_agencia = str(b.pagamento_agencia)
+  const pagamento_conta = str(b.pagamento_conta)
+  const pagamento_pix_tipo_chave = str(b.pagamento_pix_tipo_chave)
+  const pagamento_pix_chave = str(b.pagamento_pix_chave)
+  const data_programacao = str(b.data_programacao)
 
   if (
     !numero ||
@@ -64,36 +87,67 @@ notasRouter.post('/', async (req, res) => {
     !data_emissao ||
     !contrato ||
     !centro_custo ||
-    !categoria
+    !categoria ||
+    !tipo_pagamento ||
+    !pagamento_favorecido ||
+    !pagamento_cpf_cnpj ||
+    !data_programacao
   ) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
     res.status(400).json({
       error:
-        'N° do arquivo, operação, regional, seccional, cidade, UF, fornecedor, n° da nota, valor, data de emissão, contrato, centro de custo e categoria são obrigatórios.',
+        'N° do arquivo, operação, regional, seccional, cidade, UF, fornecedor, n° da nota, valor, data de emissão, contrato, centro de custo, categoria, tipo de pagamento, favorecido, CPF/CNPJ e data da programação são obrigatórios.',
     })
     return
   }
   if (!includes(OPERACOES, operacao)) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
     res.status(400).json({ error: 'Operação inválida.' })
     return
   }
   if (!includes(CONTRATOS, contrato)) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
     res.status(400).json({ error: 'Contrato inválido.' })
     return
   }
-  if (!includes(CENTROS_CUSTO, centro_custo)) {
+  if (!isCentroCustoValido(centro_custo)) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
     res.status(400).json({ error: 'Centro de custo inválido.' })
     return
   }
-  if (!includes(CATEGORIAS, categoria)) {
-    res.status(400).json({ error: 'Categoria inválida.' })
+  if (!isCategoriaValida(centro_custo, categoria)) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
+    res.status(400).json({ error: 'Categoria inválida para o centro de custo selecionado.' })
+    return
+  }
+  if (!includes(TIPOS_PAGAMENTO, tipo_pagamento)) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
+    res.status(400).json({ error: 'Tipo de pagamento inválido.' })
+    return
+  }
+  if (tipo_pagamento === 'Transferência' && (!pagamento_banco || !pagamento_agencia || !pagamento_conta)) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
+    res.status(400).json({ error: 'Banco, agência e conta são obrigatórios para pagamento por transferência.' })
+    return
+  }
+  if (tipo_pagamento === 'Pix' && (!pagamento_pix_tipo_chave || !pagamento_pix_chave)) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
+    res.status(400).json({ error: 'Tipo de chave e chave PIX são obrigatórios para pagamento por PIX.' })
     return
   }
   if (uf.length !== 2) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
     res.status(400).json({ error: 'UF deve ter 2 letras.' })
     return
   }
   if (Number.isNaN(Date.parse(data_emissao))) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
     res.status(400).json({ error: 'Data de emissão inválida.' })
+    return
+  }
+  if (Number.isNaN(Date.parse(data_programacao))) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
+    res.status(400).json({ error: 'Data da programação inválida.' })
     return
   }
 
@@ -101,8 +155,11 @@ notasRouter.post('/', async (req, res) => {
     const inserted = await pool.query(
       `INSERT INTO notas_fiscais
         (numero, operacao, regional, seccional, cidade, uf, fornecedor_id, numero_nota, valor,
-         data_emissao, placa, descricao, contrato, centro_custo, categoria, observacao, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+         data_emissao, placa, descricao, contrato, centro_custo, categoria, observacao,
+         tipo_pagamento, pagamento_favorecido, pagamento_cpf_cnpj, pagamento_banco, pagamento_agencia,
+         pagamento_conta, pagamento_pix_tipo_chave, pagamento_pix_chave, boleto_arquivo, boleto_arquivo_nome,
+         data_programacao, nota_fiscal_arquivo, nota_fiscal_arquivo_nome, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
        RETURNING *`,
       [
         numero,
@@ -121,11 +178,25 @@ notasRouter.post('/', async (req, res) => {
         centro_custo,
         categoria,
         observacao || null,
+        tipo_pagamento,
+        pagamento_favorecido,
+        pagamento_cpf_cnpj,
+        pagamento_banco || null,
+        pagamento_agencia || null,
+        pagamento_conta || null,
+        pagamento_pix_tipo_chave || null,
+        pagamento_pix_chave || null,
+        boletoArquivo?.filename ?? null,
+        boletoArquivo?.originalname ?? null,
+        data_programacao,
+        notaFiscalArquivo?.filename ?? null,
+        notaFiscalArquivo?.originalname ?? null,
         req.userId,
       ],
     )
     res.status(201).json({ nota: inserted.rows[0] })
   } catch (err: unknown) {
+    await cleanupFiles(boletoArquivo, notaFiscalArquivo)
     if (isForeignKeyViolation(err)) {
       res.status(400).json({ error: 'Fornecedor não encontrado.' })
       return
@@ -137,6 +208,28 @@ notasRouter.post('/', async (req, res) => {
 notasRouter.get('/', async (_req, res) => {
   const result = await pool.query('SELECT * FROM notas_fiscais ORDER BY created_at DESC')
   res.json({ data: result.rows })
+})
+
+notasRouter.get('/:id/arquivo/:campo', async (req, res) => {
+  const id = Number(req.params.id)
+  const campo = req.params.campo
+  if (!Number.isInteger(id) || (campo !== 'boleto' && campo !== 'nota_fiscal')) {
+    res.status(400).json({ error: 'Parâmetros inválidos.' })
+    return
+  }
+
+  const column = campo === 'boleto' ? 'boleto_arquivo' : 'nota_fiscal_arquivo'
+  const nameColumn = campo === 'boleto' ? 'boleto_arquivo_nome' : 'nota_fiscal_arquivo_nome'
+  const result = await pool.query<{ arquivo: string | null; nome: string | null }>(
+    `SELECT ${column} AS arquivo, ${nameColumn} AS nome FROM notas_fiscais WHERE id = $1`,
+    [id],
+  )
+  const row = result.rows[0]
+  if (!row?.arquivo) {
+    res.status(404).json({ error: 'Arquivo não encontrado.' })
+    return
+  }
+  res.download(path.join(UPLOADS_DIR, row.arquivo), row.nome ?? row.arquivo)
 })
 
 function isForeignKeyViolation(err: unknown): boolean {
