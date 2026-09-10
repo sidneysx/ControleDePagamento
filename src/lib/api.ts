@@ -245,8 +245,21 @@ export function createNota(payload: NotaPayload, files: NotaFiles = {}) {
   return requestForm<{ nota: Nota }>('/notas', formData)
 }
 
-export function listNotas() {
-  return request<{ data: Nota[] }>('/notas')
+export type NotasQuery = {
+  search?: string
+  dataProgramacao?: string
+}
+
+export function listNotas(query: NotasQuery = {}) {
+  const params = new URLSearchParams()
+  if (query.search) params.set('search', query.search)
+  if (query.dataProgramacao) params.set('data_programacao', query.dataProgramacao)
+  const qs = params.toString()
+  return request<{ data: Nota[] }>(`/notas${qs ? `?${qs}` : ''}`)
+}
+
+export function deleteNota(id: number) {
+  return request<void>(`/notas/${id}`, { method: 'DELETE' })
 }
 
 export function notaArquivoUrl(id: number, campo: 'boleto' | 'nota_fiscal') {

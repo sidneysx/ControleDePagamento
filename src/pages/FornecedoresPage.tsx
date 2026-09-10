@@ -88,8 +88,8 @@ function tipoContaLabel(tipo: string | null): string {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#13294b] outline-none focus:border-[#13294b] focus:ring-2 focus:ring-[#13294b]/20'
-const labelClass = 'text-xs font-medium text-[#13294b]'
+  'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#0e7c86] outline-none focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20'
+const labelClass = 'text-xs font-medium text-[#0e7c86]'
 
 function TextField({
   id,
@@ -118,7 +118,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-xs font-medium tracking-wide text-gray-400 uppercase">{label}</dt>
-      <dd className="text-sm text-[#13294b]">{value}</dd>
+      <dd className="text-sm text-[#0e7c86]">{value}</dd>
     </div>
   )
 }
@@ -129,7 +129,7 @@ function ViewModal({ fornecedor, onClose }: { fornecedor: Fornecedor | null; onC
       {fornecedor && (
         <div className="flex flex-col gap-6">
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-[#13294b]">Dados Gerais</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[#0e7c86]">Dados Gerais</h3>
             <dl className="grid grid-cols-2 gap-4">
               <DetailRow label="CPF/CNPJ" value={fmt(formatCpfCnpj(fornecedor.cpf_cnpj))} />
               <DetailRow label="Razão Social" value={fmt(fornecedor.razao_social)} />
@@ -140,7 +140,7 @@ function ViewModal({ fornecedor, onClose }: { fornecedor: Fornecedor | null; onC
           </section>
 
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-[#13294b]">Dados Bancários</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[#0e7c86]">Dados Bancários</h3>
             <dl className="grid grid-cols-2 gap-4">
               <DetailRow label="Banco" value={fmt(fornecedor.banco)} />
               <DetailRow label="Agência" value={fmt(fornecedor.agencia)} />
@@ -150,7 +150,7 @@ function ViewModal({ fornecedor, onClose }: { fornecedor: Fornecedor | null; onC
           </section>
 
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-[#13294b]">Dados PIX</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[#0e7c86]">Dados PIX</h3>
             <dl className="grid grid-cols-2 gap-4">
               <DetailRow label="Favorecido PIX" value={fmt(fornecedor.pix_favorecido)} />
               <DetailRow label="CPF/CNPJ PIX" value={fmt(formatCpfCnpj(fornecedor.pix_cpf_cnpj))} />
@@ -254,7 +254,7 @@ function FormModal({ open, onClose, onSaved, editing }: FormModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-[#13294b] hover:bg-gray-50"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-[#0e7c86] hover:bg-gray-50"
           >
             Cancelar
           </button>
@@ -262,7 +262,7 @@ function FormModal({ open, onClose, onSaved, editing }: FormModalProps) {
             type="submit"
             form="fornecedor-form"
             disabled={submitting}
-            className="rounded-lg bg-[#13294b] px-4 py-2 text-sm font-medium text-white hover:bg-[#0d1e38] disabled:opacity-50"
+            className="rounded-lg bg-[#0e7c86] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a616a] disabled:opacity-50"
           >
             {submitting ? 'Salvando...' : 'Salvar'}
           </button>
@@ -271,7 +271,7 @@ function FormModal({ open, onClose, onSaved, editing }: FormModalProps) {
     >
       <form id="fornecedor-form" onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-[#13294b]">Dados do Fornecedor</h3>
+          <h3 className="text-sm font-semibold text-[#0e7c86]">Dados do Fornecedor</h3>
           <div className="grid grid-cols-2 gap-3">
             <TextField id="cpf_cnpj" label="CPF/CNPJ *" value={form.cpf_cnpj} onChange={(v) => set('cpf_cnpj', v)} />
             <TextField id="razao_social" label="Razão Social *" value={form.razao_social} onChange={(v) => set('razao_social', v)} />
@@ -320,7 +320,7 @@ function FormModal({ open, onClose, onSaved, editing }: FormModalProps) {
         </section>
 
         <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-[#13294b]">Dados Bancários (opcional)</h3>
+          <h3 className="text-sm font-semibold text-[#0e7c86]">Dados Bancários (opcional)</h3>
           <div className="grid grid-cols-2 gap-3">
             <TextField id="banco" label="Banco" value={form.banco} onChange={(v) => set('banco', v)} />
             <TextField id="agencia" label="Agência" value={form.agencia} onChange={(v) => set('agencia', v)} />
@@ -344,7 +344,7 @@ function FormModal({ open, onClose, onSaved, editing }: FormModalProps) {
         </section>
 
         <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-[#13294b]">Dados PIX (opcional)</h3>
+          <h3 className="text-sm font-semibold text-[#0e7c86]">Dados PIX (opcional)</h3>
           <div className="grid grid-cols-2 gap-3">
             <TextField id="pix_favorecido" label="Favorecido PIX" value={form.pix_favorecido} onChange={(v) => set('pix_favorecido', v)} />
             <TextField id="pix_cpf_cnpj" label="CPF/CNPJ PIX" value={form.pix_cpf_cnpj} onChange={(v) => set('pix_cpf_cnpj', v)} />
@@ -401,7 +401,7 @@ function DeleteModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-[#13294b] hover:bg-gray-50"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-[#0e7c86] hover:bg-gray-50"
           >
             Cancelar
           </button>
@@ -417,7 +417,7 @@ function DeleteModal({
       }
     >
       <p className="text-sm text-gray-600">
-        Tem certeza que deseja excluir o fornecedor <strong className="text-[#13294b]">{fornecedor?.razao_social}</strong>? Essa
+        Tem certeza que deseja excluir o fornecedor <strong className="text-[#0e7c86]">{fornecedor?.razao_social}</strong>? Essa
         ação não pode ser desfeita.
       </p>
     </Modal>
@@ -529,16 +529,16 @@ export default function FornecedoresPage() {
   }
 
   const selectClass =
-    'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#13294b] outline-none focus:border-[#13294b] focus:ring-2 focus:ring-[#13294b]/20'
+    'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#0e7c86] outline-none focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20'
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-[#13294b]">Fornecedores</h1>
+        <h1 className="text-xl font-semibold text-[#0e7c86]">Fornecedores</h1>
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-lg bg-[#13294b] px-4 py-2 text-sm font-medium text-white hover:bg-[#0d1e38]"
+          className="rounded-lg bg-[#0e7c86] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a616a]"
         >
           + Novo Fornecedor
         </button>
@@ -553,7 +553,7 @@ export default function FornecedoresPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Buscar por CPF/CNPJ, razão social ou cidade"
-            className="w-full rounded-lg border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm text-[#13294b] outline-none focus:border-[#13294b] focus:ring-2 focus:ring-[#13294b]/20"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm text-[#0e7c86] outline-none focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20"
           />
         </div>
 
@@ -616,7 +616,7 @@ export default function FornecedoresPage() {
         <button
           type="button"
           onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-[#13294b] hover:bg-gray-50"
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-[#0e7c86] hover:bg-gray-50"
           title={order === 'asc' ? 'Ordem crescente' : 'Ordem decrescente'}
         >
           {order === 'asc' ? '↑' : '↓'}
@@ -653,15 +653,15 @@ export default function FornecedoresPage() {
             ) : (
               data.map((f) => (
                 <tr key={f.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-[#13294b]">{formatCpfCnpj(f.cpf_cnpj)}</td>
-                  <td className="px-4 py-3 text-[#13294b]">{f.razao_social}</td>
-                  <td className="px-4 py-3 text-[#13294b]">{f.cidade}</td>
-                  <td className="px-4 py-3 text-[#13294b]">{f.uf}</td>
+                  <td className="px-4 py-3 text-[#0e7c86]">{formatCpfCnpj(f.cpf_cnpj)}</td>
+                  <td className="px-4 py-3 text-[#0e7c86]">{f.razao_social}</td>
+                  <td className="px-4 py-3 text-[#0e7c86]">{f.cidade}</td>
+                  <td className="px-4 py-3 text-[#0e7c86]">{f.uf}</td>
                   <td className="px-4 py-3">
                     <button
                       type="button"
                       onClick={() => setViewing(f)}
-                      className="text-sm font-medium text-[#2f6fed] hover:underline"
+                      className="text-sm font-medium text-[#0e7c86] hover:underline"
                     >
                       Visualizar
                     </button>
@@ -672,7 +672,7 @@ export default function FornecedoresPage() {
                         type="button"
                         onClick={() => setViewing(f)}
                         title="Visualizar"
-                        className="rounded-lg p-1.5 hover:bg-gray-100 hover:text-[#13294b]"
+                        className="rounded-lg p-1.5 hover:bg-gray-100 hover:text-[#0e7c86]"
                       >
                         <EyeIcon className="h-4 w-4" />
                       </button>
@@ -680,7 +680,7 @@ export default function FornecedoresPage() {
                         type="button"
                         onClick={() => openEdit(f)}
                         title="Editar"
-                        className="rounded-lg p-1.5 hover:bg-gray-100 hover:text-[#13294b]"
+                        className="rounded-lg p-1.5 hover:bg-gray-100 hover:text-[#0e7c86]"
                       >
                         <PencilIcon className="h-4 w-4" />
                       </button>
@@ -728,7 +728,7 @@ export default function FornecedoresPage() {
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-[#13294b] hover:bg-gray-50 disabled:opacity-40"
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-[#0e7c86] hover:bg-gray-50 disabled:opacity-40"
           >
             Anterior
           </button>
@@ -739,7 +739,7 @@ export default function FornecedoresPage() {
             type="button"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-[#13294b] hover:bg-gray-50 disabled:opacity-40"
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-[#0e7c86] hover:bg-gray-50 disabled:opacity-40"
           >
             Próxima
           </button>
@@ -756,7 +756,7 @@ export default function FornecedoresPage() {
       />
 
       {toast && (
-        <div className="fixed right-6 bottom-6 z-50 rounded-lg bg-[#13294b] px-4 py-3 text-sm text-white shadow-xl">
+        <div className="fixed right-6 bottom-6 z-50 rounded-lg bg-[#0e7c86] px-4 py-3 text-sm text-white shadow-xl">
           {toast}
         </div>
       )}

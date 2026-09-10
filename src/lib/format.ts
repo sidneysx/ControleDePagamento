@@ -29,9 +29,28 @@ export function formatCurrency(value: string | number | null | undefined): strin
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+export function formatCurrencyInput(value: string): string {
+  const digits = onlyDigits(value)
+  const cents = digits ? parseInt(digits, 10) : 0
+  return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+export function currencyInputToDecimalString(value: string): string {
+  const digits = onlyDigits(value)
+  const cents = digits ? parseInt(digits, 10) : 0
+  return (cents / 100).toFixed(2)
+}
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
   return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+}
+
+export function formatCodeLabel(raw: string): string {
+  return raw
+    .split('_')
+    .map((part) => (part.length <= 2 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()))
+    .join(' ')
 }

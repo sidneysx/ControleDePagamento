@@ -36,12 +36,12 @@ export default function LoginPage() {
 
   return (
     <AuthLayout>
-      <h1 className="text-center text-2xl font-bold text-[#13294b]">Bem-vindo de volta!</h1>
+      <h1 className="text-center text-2xl font-bold text-[#0e7c86]">Bem-vindo de volta!</h1>
       <p className="mt-1 text-center text-sm text-gray-500">Faça login para acessar o sistema</p>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="username" className="text-sm font-medium text-[#13294b]">
+          <label htmlFor="username" className="text-sm font-medium text-[#0e7c86]">
             Usuário
           </label>
           <div className="relative">
@@ -60,13 +60,13 @@ export default function LoginPage() {
               placeholder="Digite seu usuário"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pr-3 pl-10 text-[#13294b] outline-none placeholder:text-gray-400 focus:border-[#13294b] focus:ring-2 focus:ring-[#13294b]/20"
+              className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pr-3 pl-10 text-[#0e7c86] outline-none placeholder:text-gray-400 focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="password" className="text-sm font-medium text-[#13294b]">
+          <label htmlFor="password" className="text-sm font-medium text-[#0e7c86]">
             Senha
           </label>
           <div className="relative">
@@ -85,7 +85,7 @@ export default function LoginPage() {
               placeholder="Digite sua senha"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pr-10 pl-10 text-[#13294b] outline-none placeholder:text-gray-400 focus:border-[#13294b] focus:ring-2 focus:ring-[#13294b]/20"
+              className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pr-10 pl-10 text-[#0e7c86] outline-none placeholder:text-gray-400 focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20"
             />
             <button
               type="button"
@@ -108,16 +108,16 @@ export default function LoginPage() {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <label className="flex items-center gap-2 text-[#13294b]">
+          <label className="flex items-center gap-2 text-[#0e7c86]">
             <input
               type="checkbox"
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-[#13294b] focus:ring-[#13294b]/30"
+              className="h-4 w-4 rounded border-gray-300 text-[#0e7c86] focus:ring-[#0e7c86]/30"
             />
             Lembrar meu acesso
           </label>
-          <span className="cursor-not-allowed text-[#2f6fed]" title="Em breve">
+          <span className="cursor-not-allowed text-[#0e7c86]" title="Em breve">
             Esqueceu sua senha?
           </span>
         </div>
@@ -131,7 +131,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-1 flex items-center justify-center gap-2 rounded-lg bg-[#13294b] px-4 py-2.5 font-medium text-white transition-colors hover:bg-[#0d1e38] disabled:opacity-50"
+          className="mt-1 flex items-center justify-center gap-2 rounded-lg bg-[#0e7c86] px-4 py-2.5 font-medium text-white transition-colors hover:bg-[#0a616a] disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
             <path
@@ -153,7 +153,7 @@ export default function LoginPage() {
 
         <Link
           to="/register"
-          className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 font-medium text-[#13294b] transition-colors hover:bg-gray-50"
+          className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 font-medium text-[#0e7c86] transition-colors hover:bg-gray-50"
         >
           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
             <path

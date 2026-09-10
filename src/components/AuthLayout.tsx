@@ -1,21 +1,6 @@
 import type { ReactNode } from 'react'
 
-// TODO: once the real brand assets are available, replace this gradient with
-// the construction-site photo (e.g. import heroPhoto from '../assets/dpl-hero.jpg'
-// and set it as a background-image on the wrapper below).
-const HERO_GRADIENT =
-  'bg-[linear-gradient(135deg,#0b1b32_0%,#13294b_45%,#3a2a1f_85%,#5c3a17_100%)]'
-
-function DplMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" fill="none" className={className} aria-hidden="true">
-      <rect x="2" y="26" width="8" height="20" rx="1.5" fill="#f2a93a" />
-      <rect x="13" y="16" width="8" height="30" rx="1.5" fill="#f2a93a" />
-      <rect x="24" y="6" width="8" height="40" rx="1.5" fill="#f2a93a" />
-      <path d="M35 46V18l11-8v36z" fill="#13294b" />
-    </svg>
-  )
-}
+const HERO_GRADIENT = 'bg-[linear-gradient(135deg,#0a5c67_0%,#0e7c86_55%,#149aa7_100%)]'
 
 function ShieldIcon({ className }: { className?: string }) {
   return (
@@ -68,44 +53,44 @@ function Feature({ icon, title, desc }: { icon: ReactNode; title: string; desc: 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className={`relative min-h-svh overflow-hidden lg:grid lg:grid-cols-2 ${HERO_GRADIENT}`}>
-      <div className="pointer-events-none absolute inset-0 bg-black/25" />
+      <div className="pointer-events-none absolute inset-0 bg-black/10" />
+
+      <div className="pointer-events-none absolute inset-0 hidden overflow-hidden lg:block">
+        <div className="animate-float-a absolute -top-24 -left-20 h-96 w-96 rounded-full bg-[#f2a93a]/20 blur-3xl" />
+        <div className="animate-float-b absolute top-1/3 -right-28 h-[26rem] w-[26rem] rounded-full bg-white/10 blur-3xl" />
+        <div className="animate-float-c absolute -bottom-28 left-1/4 h-80 w-80 rounded-full bg-[#149aa7]/30 blur-3xl" />
+      </div>
 
       <div className="relative z-10 hidden flex-col justify-center gap-10 px-16 py-10 text-white lg:flex">
         <div className="mx-auto flex w-full max-w-md flex-col gap-10">
-          <div className="flex items-center gap-3">
-            <DplMark className="h-12 w-12 shrink-0" />
-            <div>
-              <div className="text-3xl leading-none font-extrabold">DPL</div>
-              <div className="text-xs tracking-[0.35em] text-white/80">CONSTRUÇÕES</div>
-            </div>
-          </div>
-
-          <div>
-            <h1 className="text-4xl leading-tight font-bold">
-              Gestão que constrói <span className="text-[#f2a93a]">resultados.</span>
+          <div className="animate-fade-in-up">
+            <div className="text-xs font-semibold tracking-[0.35em] text-white/60">DPL CONSTRUÇÕES</div>
+            <h1 className="mt-2 text-4xl leading-tight font-bold">
+              Gestão de <span className="text-[#f2a93a]">Pagamento</span>
             </h1>
             <p className="mt-4 text-white/75">
               Sistema de controle de pagamentos simples, seguro e eficiente para sua obra.
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="animate-fade-in-up grid grid-cols-3 gap-4 [animation-delay:150ms]">
             <Feature icon={<ShieldIcon className="h-5 w-5" />} title="Segurança" desc="Proteção de dados e informações" />
             <Feature icon={<ChartIcon className="h-5 w-5" />} title="Controle" desc="Acompanhe todos os pagamentos" />
             <Feature icon={<DocIcon className="h-5 w-5" />} title="Relatórios" desc="Informações claras para decisões" />
           </div>
 
-          <p className="text-xs text-white/45">
+          <p className="animate-fade-in-up text-xs text-white/45 [animation-delay:300ms]">
             © {new Date().getFullYear()} DPL Construções. Todos os direitos reservados.
           </p>
         </div>
       </div>
 
       <div className="relative z-10 flex min-h-svh items-center justify-center px-4 py-10 lg:min-h-0">
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl sm:p-10">
-          <div className="mb-6 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#f4f6f9]">
-              <DplMark className="h-9 w-9" />
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl sm:p-10">
+          <div className="mb-6 text-center lg:hidden">
+            <div className="text-[11px] font-semibold tracking-[0.35em] text-[#0e7c86]/70">DPL CONSTRUÇÕES</div>
+            <div className="text-2xl font-bold text-[#0e7c86]">
+              Gestão de <span className="text-[#f2a93a]">Pagamento</span>
             </div>
           </div>
           {children}

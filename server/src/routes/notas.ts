@@ -42,7 +42,12 @@ function uploadMiddleware(req: Request, res: Response, next: NextFunction) {
 
 function getUploadedFile(req: Request, field: string): Express.Multer.File | undefined {
   const files = req.files as Record<string, Express.Multer.File[]> | undefined
-  return files?.[field]?.[0]
+  const file = files?.[field]?.[0]
+  if (file) {
+    // busboy decodes multipart filenames as latin1; recover the original UTF-8 bytes
+    file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8')
+  }
+  return file
 }
 
 async function cleanupFiles(...files: (Express.Multer.File | undefined)[]) {
@@ -215,15 +220,67 @@ notasRouter.post('/', uploadMiddleware, async (req, res) => {
   }
 })
 
-notasRouter.get('/', async (_req, res) => {
-  const result = await pool.query(`
-    SELECT n.*, f.razao_social AS fornecedor_razao_social, f.cpf_cnpj AS fornecedor_cpf_cnpj, u.username AS created_by_username
+notasRouter.get('/', async (req, res) => {
+  const search = str(req.query.search)
+  const dataProgramacao = str(req.query.data_programacao)
+
+  const conditions: string[] = []
+  const params: unknown[] = []
+
+  if (search) {
+    const searchDigits = onlyDigits(search)
+    params.push(`%${search}%`)
+    const parts = [`n.numero ILIKE $${params.length}`]
+    if (searchDigits) {
+      params.push(`%${searchDigits}%`)
+      parts.push(`n.numero_nota ILIKE $${params.length}`)
+      parts.push(`f.cpf_cnpj ILIKE $${params.length}`)
+    }
+    conditions.push(`(${parts.join(' OR ')})`)
+  }
+  if (dataProgramacao) {
+    params.push(dataProgramacao)
+    conditions.push(`n.data_programacao = $${params.length}`)
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+
+  const result = await pool.query(
+    `SELECT n.*, f.razao_social AS fornecedor_razao_social, f.cpf_cnpj AS fornecedor_cpf_cnpj, u.username AS created_by_username
     FROM notas_fiscais n
     LEFT JOIN fornecedores f ON f.id = n.fornecedor_id
     LEFT JOIN users u ON u.id = n.created_by
-    ORDER BY n.created_at DESC
-  `)
+    ${whereClause}
+    ORDER BY n.created_at DESC`,
+    params,
+  )
   res.json({ data: result.rows })
+})
+
+notasRouter.delete('/:id', async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: 'ID inválido.' })
+    return
+  }
+
+  const deleted = await pool.query<{ boleto_arquivo: string | null; nota_fiscal_arquivo: string | null }>(
+    'DELETE FROM notas_fiscais WHERE id = $1 RETURNING boleto_arquivo, nota_fiscal_arquivo',
+    [id],
+  )
+  const row = deleted.rows[0]
+  if (!row) {
+    res.status(404).json({ error: 'Nota fiscal não encontrada.' })
+    return
+  }
+
+  await Promise.all(
+    [row.boleto_arquivo, row.nota_fiscal_arquivo]
+      .filter((f): f is string => !!f)
+      .map((f) => fs.unlink(path.join(UPLOADS_DIR, f)).catch(() => {})),
+  )
+
+  res.status(204).end()
 })
 
 notasRouter.get('/:id/arquivo/:campo', async (req, res) => {
@@ -245,7 +302,16 @@ notasRouter.get('/:id/arquivo/:campo', async (req, res) => {
     res.status(404).json({ error: 'Arquivo não encontrado.' })
     return
   }
-  res.download(path.join(UPLOADS_DIR, row.arquivo), row.nome ?? row.arquivo)
+
+  const filename = row.nome ?? row.arquivo
+  const asciiFallback = filename.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, "'")
+  const disposition = req.query.download ? 'attachment' : 'inline'
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader(
+    'Content-Disposition',
+    `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+  )
+  res.sendFile(path.join(UPLOADS_DIR, row.arquivo))
 })
 
 function isForeignKeyViolation(err: unknown): boolean {

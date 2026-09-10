@@ -1,17 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-
-function DplMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" fill="none" className={className} aria-hidden="true">
-      <rect x="2" y="26" width="8" height="20" rx="1.5" fill="#f2a93a" />
-      <rect x="13" y="16" width="8" height="30" rx="1.5" fill="#f2a93a" />
-      <rect x="24" y="6" width="8" height="40" rx="1.5" fill="#f2a93a" />
-      <path d="M35 46V18l11-8v36z" fill="#e2e8f0" />
-    </svg>
-  )
-}
+import logoDpl from '../assets/images/logo-dpl.png'
 
 function GridIcon({ className }: { className?: string }) {
   return (
@@ -72,12 +62,8 @@ const NAV_ITEMS = [
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
-      <div className="flex items-center gap-3 px-6 py-6">
-        <DplMark className="h-9 w-9 shrink-0" />
-        <div>
-          <div className="text-lg leading-none font-extrabold text-white">DPL</div>
-          <div className="text-[10px] tracking-[0.3em] text-white/60">CONSTRUÇÕES</div>
-        </div>
+      <div className="flex items-center px-6 py-6">
+        <img src={logoDpl} alt="DPL Construções" className="h-11 w-auto" />
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-3">
@@ -89,7 +75,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                isActive ? 'bg-[#0e7c86]/10 text-[#0e7c86]' : 'text-gray-500 hover:bg-gray-50 hover:text-[#0e7c86]'
               }`
             }
           >
@@ -106,11 +92,11 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { user, logout } = useAuth()
 
   return (
-    <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 lg:px-8">
+    <header className="flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3 lg:px-8">
       <button
         type="button"
         onClick={onOpenMenu}
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-[#13294b] hover:bg-gray-100 lg:hidden"
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-[#0e7c86] hover:bg-gray-100 lg:hidden"
         aria-label="Abrir menu"
       >
         <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
@@ -121,7 +107,7 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
       <div className="ml-auto flex items-center gap-4">
         {user && (
           <div className="text-right text-sm">
-            <div className="font-medium text-[#13294b]">{user.username}</div>
+            <div className="font-medium text-[#0e7c86]">{user.username}</div>
             <div className="text-xs text-gray-500">
               {user.regional} / {user.seccional}
             </div>
@@ -130,7 +116,7 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
         <button
           type="button"
           onClick={() => void logout()}
-          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-[#13294b] hover:bg-gray-50"
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-[#0e7c86] hover:bg-gray-50"
         >
           Sair
         </button>
@@ -144,14 +130,14 @@ export default function AppLayout(): ReactNode {
 
   return (
     <div className="flex min-h-svh bg-gray-50">
-      <aside className="hidden w-64 flex-col bg-[#13294b] lg:flex">
+      <aside className="hidden w-64 flex-col border-r border-gray-100 bg-white lg:flex">
         <SidebarContent />
       </aside>
 
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-[#13294b] shadow-xl">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-white shadow-xl">
             <SidebarContent onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>

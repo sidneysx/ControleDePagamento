@@ -3,17 +3,19 @@ import Modal from '../components/Modal'
 import * as api from '../lib/api'
 import type { Fornecedor, Nota, NotaPayload } from '../lib/api'
 import { useMunicipios, useUFs } from '../lib/ibge'
-import { formatCpfCnpj, formatCurrency, formatDate, formatNumeroNota } from '../lib/format'
+import {
+  currencyInputToDecimalString,
+  formatCodeLabel,
+  formatCpfCnpj,
+  formatCurrency,
+  formatCurrencyInput,
+  formatDate,
+  formatNumeroNota,
+} from '../lib/format'
+import { exportNotasToExcel } from '../lib/exportNotas'
 
 function alphaSort(list: string[]): string[] {
   return [...list].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-}
-
-function formatCodeLabel(raw: string): string {
-  return raw
-    .split('_')
-    .map((part) => (part.length <= 2 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()))
-    .join(' ')
 }
 
 function toOptions(codes: string[]): { value: string; label: string }[] {
@@ -59,8 +61,8 @@ const EMPTY_FORM: NotaPayload = {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#13294b] outline-none focus:border-[#13294b] focus:ring-2 focus:ring-[#13294b]/20'
-const labelClass = 'text-xs font-medium text-[#13294b]'
+  'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#0e7c86] outline-none focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20'
+const labelClass = 'text-xs font-medium text-[#0e7c86]'
 
 function TextField({
   id,
@@ -102,7 +104,7 @@ function ReadOnlyField({ id, label, value, span2 }: { id: string; label: string;
       <label htmlFor={id} className={labelClass}>
         {label}
       </label>
-      <div id={id} className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-[#13294b]">
+      <div id={id} className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-[#0e7c86]">
         {value || '—'}
       </div>
     </div>
@@ -210,7 +212,7 @@ function CreatableSelect({
             type="button"
             onClick={handleCreate}
             disabled={creating || !newValue.trim()}
-            className="shrink-0 rounded-lg bg-[#13294b] px-3 py-2 text-xs font-medium text-white hover:bg-[#0d1e38] disabled:opacity-50"
+            className="shrink-0 rounded-lg bg-[#0e7c86] px-3 py-2 text-xs font-medium text-white hover:bg-[#0a616a] disabled:opacity-50"
           >
             {creating ? '...' : 'Adicionar'}
           </button>
@@ -221,7 +223,7 @@ function CreatableSelect({
               setNewValue('')
               setCreateError(null)
             }}
-            className="shrink-0 rounded-lg border border-gray-200 px-3 py-2 text-xs text-[#13294b] hover:bg-gray-50"
+            className="shrink-0 rounded-lg border border-gray-200 px-3 py-2 text-xs text-[#0e7c86] hover:bg-gray-50"
           >
             Cancelar
           </button>
@@ -294,11 +296,11 @@ function FileDropZone({
           if (f) onChange(f)
         }}
         className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-4 py-5 text-center text-sm transition-colors ${
-          dragOver ? 'border-[#13294b] bg-[#13294b]/5' : 'border-gray-200 hover:bg-gray-50'
+          dragOver ? 'border-[#0e7c86] bg-[#0e7c86]/5' : 'border-gray-200 hover:bg-gray-50'
         }`}
       >
         {file ? (
-          <div className="flex items-center gap-2 text-[#13294b]">
+          <div className="flex items-center gap-2 text-[#0e7c86]">
             <span className="font-medium">{file.name}</span>
             <button
               type="button"
@@ -366,10 +368,10 @@ function FornecedorPicker({
         <label className={labelClass}>Fornecedor *</label>
         <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
           <div className="flex flex-col">
-            <span className="font-medium text-[#13294b]">{fornecedor.razao_social}</span>
+            <span className="font-medium text-[#0e7c86]">{fornecedor.razao_social}</span>
             <span className="text-xs text-gray-500">{formatCpfCnpj(fornecedor.cpf_cnpj)}</span>
           </div>
-          <button type="button" onClick={onClear} className="text-xs font-medium text-[#2f6fed] hover:underline">
+          <button type="button" onClick={onClear} className="text-xs font-medium text-[#0e7c86] hover:underline">
             Trocar
           </button>
         </div>
@@ -414,7 +416,7 @@ function FornecedorPicker({
                 }}
                 className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-gray-50"
               >
-                <span className="font-medium text-[#13294b]">{formatCpfCnpj(f.cpf_cnpj)}</span>
+                <span className="font-medium text-[#0e7c86]">{formatCpfCnpj(f.cpf_cnpj)}</span>
                 <span className="text-xs text-gray-500">{f.razao_social}</span>
               </button>
             ))
@@ -502,18 +504,78 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-xs font-medium tracking-wide text-gray-400 uppercase">{label}</dt>
-      <dd className="text-sm text-[#13294b]">{value}</dd>
+      <dd className="text-sm text-[#0e7c86]">{value}</dd>
     </div>
   )
 }
 
-function DetailModal({ nota, onClose }: { nota: Nota | null; onClose: () => void }) {
+function PdfViewerModal({
+  file,
+  onClose,
+}: {
+  file: { url: string; filename: string } | null
+  onClose: () => void
+}) {
   return (
-    <Modal open={!!nota} onClose={onClose} title="Detalhes da Nota Fiscal" maxWidth="max-w-2xl">
+    <Modal open={!!file} onClose={onClose} title={file?.filename ?? 'Arquivo'} maxWidth="max-w-5xl" hideScrollbar>
+      {file && (
+        <div className="flex flex-col gap-3">
+          <iframe src={file.url} title={file.filename} className="h-[70vh] w-full rounded-lg border border-gray-200" />
+          <a
+            href={`${file.url}?download=1`}
+            className="self-end rounded-lg bg-[#0e7c86] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a616a]"
+          >
+            Baixar PDF
+          </a>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+function PdfFileLinks({
+  filename,
+  url,
+  onView,
+}: {
+  filename: string | null
+  url: string
+  onView: (file: { url: string; filename: string }) => void
+}) {
+  if (!filename) return <span className="text-[#0e7c86]">—</span>
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => onView({ url, filename })}
+        className="font-medium text-[#0e7c86] hover:underline"
+      >
+        Visualizar
+      </button>
+      <a href={`${url}?download=1`} className="text-xs text-gray-500 hover:underline">
+        Baixar
+      </a>
+    </div>
+  )
+}
+
+function DetailModal({
+  nota,
+  onClose,
+  onDeleteRequest,
+}: {
+  nota: Nota | null
+  onClose: () => void
+  onDeleteRequest: (nota: Nota) => void
+}) {
+  const [pdfFile, setPdfFile] = useState<{ url: string; filename: string } | null>(null)
+
+  return (
+    <Modal open={!!nota} onClose={onClose} title="Detalhes da Nota Fiscal" maxWidth="max-w-2xl" hideScrollbar>
       {nota && (
         <div className="flex flex-col gap-6">
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-[#13294b]">Identificação</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[#0e7c86]">Identificação</h3>
             <dl className="grid grid-cols-2 gap-4">
               <DetailRow label="N° do Arquivo" value={fmt(nota.numero)} />
               <DetailRow label="Operação" value={fmt(nota.operacao)} />
@@ -525,7 +587,7 @@ function DetailModal({ nota, onClose }: { nota: Nota | null; onClose: () => void
           </section>
 
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-[#13294b]">Fornecedor e Nota Fiscal</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[#0e7c86]">Fornecedor e Nota Fiscal</h3>
             <dl className="grid grid-cols-2 gap-4">
               <DetailRow label="Fornecedor" value={fmt(nota.fornecedor_razao_social)} />
               <DetailRow label="CPF/CNPJ do Fornecedor" value={fmt(formatCpfCnpj(nota.fornecedor_cpf_cnpj))} />
@@ -542,7 +604,7 @@ function DetailModal({ nota, onClose }: { nota: Nota | null; onClose: () => void
           </section>
 
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-[#13294b]">Dados do Pagamento</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[#0e7c86]">Dados do Pagamento</h3>
             <dl className="grid grid-cols-2 gap-4">
               <DetailRow label="Tipo de Pagamento" value={fmt(nota.tipo_pagamento)} />
               <DetailRow label="Favorecido" value={fmt(nota.pagamento_favorecido)} />
@@ -564,18 +626,11 @@ function DetailModal({ nota, onClose }: { nota: Nota | null; onClose: () => void
                 <div>
                   <dt className="text-xs font-medium tracking-wide text-gray-400 uppercase">Boleto</dt>
                   <dd className="text-sm">
-                    {nota.boleto_arquivo ? (
-                      <a
-                        href={api.notaArquivoUrl(nota.id, 'boleto')}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-medium text-[#2f6fed] hover:underline"
-                      >
-                        {nota.boleto_arquivo_nome ?? 'Baixar arquivo'}
-                      </a>
-                    ) : (
-                      <span className="text-[#13294b]">—</span>
-                    )}
+                    <PdfFileLinks
+                      filename={nota.boleto_arquivo_nome}
+                      url={api.notaArquivoUrl(nota.id, 'boleto')}
+                      onView={setPdfFile}
+                    />
                   </dd>
                 </div>
               )}
@@ -583,33 +638,91 @@ function DetailModal({ nota, onClose }: { nota: Nota | null; onClose: () => void
               <div>
                 <dt className="text-xs font-medium tracking-wide text-gray-400 uppercase">Nota Fiscal Anexada</dt>
                 <dd className="text-sm">
-                  {nota.nota_fiscal_arquivo ? (
-                    <a
-                      href={api.notaArquivoUrl(nota.id, 'nota_fiscal')}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-[#2f6fed] hover:underline"
-                    >
-                      {nota.nota_fiscal_arquivo_nome ?? 'Baixar arquivo'}
-                    </a>
-                  ) : (
-                    <span className="text-[#13294b]">—</span>
-                  )}
+                  <PdfFileLinks
+                    filename={nota.nota_fiscal_arquivo_nome}
+                    url={api.notaArquivoUrl(nota.id, 'nota_fiscal')}
+                    onView={setPdfFile}
+                  />
                 </dd>
               </div>
             </dl>
           </section>
 
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-[#13294b]">Lançamento</h3>
+            <h3 className="mb-3 text-sm font-semibold text-[#0e7c86]">Lançamento</h3>
             <dl className="grid grid-cols-2 gap-4">
               <DetailRow label="Lançado por" value={fmt(nota.created_by_username)} />
               <DetailRow label="Data do Lançamento" value={formatDate(nota.created_at)} />
             </dl>
           </section>
+
+          <div className="flex justify-end border-t border-gray-200 pt-4">
+            <button
+              type="button"
+              onClick={() => onDeleteRequest(nota)}
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            >
+              Apagar Nota Fiscal
+            </button>
+          </div>
         </div>
       )}
+
+      <PdfViewerModal file={pdfFile} onClose={() => setPdfFile(null)} />
     </Modal>
+  )
+}
+
+function DeleteModal({
+  nota,
+  onClose,
+  onConfirm,
+  deleting,
+}: {
+  nota: Nota | null
+  onClose: () => void
+  onConfirm: () => void
+  deleting: boolean
+}) {
+  return (
+    <Modal
+      open={!!nota}
+      onClose={onClose}
+      title="Apagar Nota Fiscal"
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-[#0e7c86] hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {deleting ? 'Apagando...' : 'Apagar'}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm text-gray-600">
+        Tem certeza que deseja apagar a nota fiscal <strong className="text-[#0e7c86]">{nota?.numero}</strong>? Essa ação não
+        pode ser desfeita.
+      </p>
+    </Modal>
+  )
+}
+
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   )
 }
 
@@ -618,8 +731,8 @@ function SkeletonRows({ count }: { count: number }) {
     <>
       {Array.from({ length: count }).map((_, i) => (
         <tr key={i}>
-          {Array.from({ length: 7 }).map((_, j) => (
-            <td key={j} className="px-4 py-3">
+          {Array.from({ length: 10 }).map((_, j) => (
+            <td key={j} className="px-3 py-2">
               <div className="h-4 animate-pulse rounded bg-gray-200" />
             </td>
           ))}
@@ -709,8 +822,8 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
       return
     }
 
-    const valorNumber = Number(form.valor.replace(',', '.'))
-    if (!Number.isFinite(valorNumber) || valorNumber <= 0) {
+    const valorDecimal = currencyInputToDecimalString(form.valor)
+    if (Number(valorDecimal) <= 0) {
       setError('Valor inválido.')
       return
     }
@@ -718,7 +831,7 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
     setSubmitting(true)
     try {
       await api.createNota(
-        { ...form, valor: String(valorNumber) },
+        { ...form, valor: valorDecimal },
         { boleto: boletoFile, notaFiscal: notaFiscalFile },
       )
       onSaved()
@@ -740,7 +853,7 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-[#13294b] hover:bg-gray-50"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-[#0e7c86] hover:bg-gray-50"
           >
             Cancelar
           </button>
@@ -748,7 +861,7 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
             type="submit"
             form="nota-form"
             disabled={submitting}
-            className="rounded-lg bg-[#13294b] px-4 py-2 text-sm font-medium text-white hover:bg-[#0d1e38] disabled:opacity-50"
+            className="rounded-lg bg-[#0e7c86] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a616a] disabled:opacity-50"
           >
             {submitting ? 'Criando...' : 'Criar'}
           </button>
@@ -757,7 +870,7 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
     >
       <form id="nota-form" onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-[#13294b]">Identificação</h3>
+          <h3 className="text-sm font-semibold text-[#0e7c86]">Identificação</h3>
           <div className="grid grid-cols-2 gap-3">
             <TextField id="numero" label="N° do Arquivo *" value={form.numero} onChange={(v) => set('numero', v)} />
 
@@ -850,7 +963,7 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
         </section>
 
         <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-[#13294b]">Fornecedor e Nota Fiscal</h3>
+          <h3 className="text-sm font-semibold text-[#0e7c86]">Fornecedor e Nota Fiscal</h3>
           <div className="grid grid-cols-2 gap-3">
             <FornecedorPicker
               fornecedor={fornecedor}
@@ -881,7 +994,13 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
               onChange={(v) => set('numero_nota', formatNumeroNota(v))}
               placeholder="000.000.000"
             />
-            <TextField id="valor" label="Valor *" type="number" value={form.valor} onChange={(v) => set('valor', v)} />
+            <TextField
+              id="valor"
+              label="Valor *"
+              value={form.valor}
+              onChange={(v) => set('valor', formatCurrencyInput(v))}
+              placeholder="R$ 0,00"
+            />
             <TextField
               id="data_emissao"
               label="Data de Emissão *"
@@ -926,7 +1045,7 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
         </section>
 
         <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-[#13294b]">Dados do Pagamento</h3>
+          <h3 className="text-sm font-semibold text-[#0e7c86]">Dados do Pagamento</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label htmlFor="tipo_pagamento" className={labelClass}>
@@ -1003,17 +1122,28 @@ export default function NotasFiscaisPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [viewing, setViewing] = useState<Nota | null>(null)
+  const [deleting, setDeleting] = useState<Nota | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [dataProgramacao, setDataProgramacao] = useState('')
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 350)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
   function reload() {
     setLoading(true)
     api
-      .listNotas()
+      .listNotas({ search, dataProgramacao })
       .then((res) => setData(res.data))
       .catch((err) => setLoadError(err instanceof Error ? err.message : 'Erro ao carregar notas fiscais.'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(reload, [])
+  useEffect(reload, [search, dataProgramacao])
 
   useEffect(() => {
     if (!toast) return
@@ -1027,30 +1157,109 @@ export default function NotasFiscaisPage() {
     reload()
   }
 
+  function handleDeleteRequest(nota: Nota) {
+    setViewing(null)
+    setDeleting(nota)
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleting) return
+    setDeleteBusy(true)
+    try {
+      await api.deleteNota(deleting.id)
+      setDeleting(null)
+      setToast('Nota fiscal apagada com sucesso.')
+      reload()
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : 'Erro ao apagar nota fiscal.')
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
+
+  const hasFilters = !!(searchInput || dataProgramacao)
+
+  function clearFilters() {
+    setSearchInput('')
+    setDataProgramacao('')
+  }
+
+  const selectClass =
+    'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-[#0e7c86] outline-none focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20'
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-[#13294b]">Notas Fiscais</h1>
+        <h1 className="text-xl font-semibold text-[#0e7c86]">Notas Fiscais</h1>
         <button
           type="button"
           onClick={() => setFormOpen(true)}
-          className="rounded-lg bg-[#13294b] px-4 py-2 text-sm font-medium text-white hover:bg-[#0d1e38]"
+          className="rounded-lg bg-[#0e7c86] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a616a]"
         >
           + Nova Nota Fiscal
         </button>
       </div>
 
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="relative min-w-60 flex-1">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
+            <SearchIcon className="h-4 w-4" />
+          </span>
+          <input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Buscar por N° da Nota ou CPF/CNPJ do fornecedor"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm text-[#0e7c86] outline-none focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="data_programacao" className="text-xs font-medium text-[#0e7c86]">
+            Programação
+          </label>
+          <input
+            id="data_programacao"
+            type="date"
+            value={dataProgramacao}
+            onChange={(e) => setDataProgramacao(e.target.value)}
+            className={selectClass}
+          />
+        </div>
+
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-[#0e7c86] hover:bg-gray-50"
+          >
+            Limpar filtros
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => exportNotasToExcel(data)}
+          disabled={data.length === 0}
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-[#0e7c86] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Baixar Excel
+        </button>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full min-w-220 text-sm">
+        <table className="w-full min-w-280 text-sm">
           <thead className="sticky top-0 bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
-              <th className="px-4 py-3 text-left">N° do Arquivo</th>
-              <th className="px-4 py-3 text-left">Fornecedor</th>
-              <th className="px-4 py-3 text-left">N° da Nota</th>
-              <th className="px-4 py-3 text-left">Valor</th>
-              <th className="px-4 py-3 text-left">Emissão</th>
-              <th className="px-4 py-3 text-left">Programação</th>
-              <th className="px-4 py-3 text-right">Ações</th>
+              <th className="px-3 py-2 text-left">N° do Arquivo</th>
+              <th className="px-3 py-2 text-left">Regional</th>
+              <th className="px-3 py-2 text-left">Seccional</th>
+              <th className="px-3 py-2 text-left">Fornecedor</th>
+              <th className="px-3 py-2 text-left">Centro de Custo</th>
+              <th className="px-3 py-2 text-left">N° da Nota</th>
+              <th className="px-3 py-2 text-left">Valor</th>
+              <th className="px-3 py-2 text-left">Emissão</th>
+              <th className="px-3 py-2 text-left">Programação</th>
+              <th className="px-3 py-2 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -1058,31 +1267,34 @@ export default function NotasFiscaisPage() {
               <SkeletonRows count={6} />
             ) : loadError ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-red-500">
+                <td colSpan={10} className="px-4 py-10 text-center text-sm text-red-500">
                   {loadError}
                 </td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
-                  Nenhuma nota fiscal lançada.
+                <td colSpan={10} className="px-4 py-10 text-center text-sm text-gray-400">
+                  {hasFilters ? 'Nenhuma nota fiscal encontrada para os filtros aplicados.' : 'Nenhuma nota fiscal lançada.'}
                 </td>
               </tr>
             ) : (
               data.map((n) => (
                 <tr key={n.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-[#13294b]">{n.numero}</td>
-                  <td className="px-4 py-3 text-[#13294b]">{fmt(n.fornecedor_razao_social)}</td>
-                  <td className="px-4 py-3 text-[#13294b]">{formatNumeroNota(n.numero_nota)}</td>
-                  <td className="px-4 py-3 text-[#13294b]">{formatCurrency(n.valor)}</td>
-                  <td className="px-4 py-3 text-[#13294b]">{formatDate(n.data_emissao)}</td>
-                  <td className="px-4 py-3 text-[#13294b]">{formatDate(n.data_programacao)}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-2 text-[#0e7c86]">{n.numero}</td>
+                  <td className="px-3 py-2 text-[#0e7c86]">{fmt(n.regional)}</td>
+                  <td className="px-3 py-2 text-[#0e7c86]">{fmt(n.seccional)}</td>
+                  <td className="px-3 py-2 text-[#0e7c86]">{fmt(n.fornecedor_razao_social)}</td>
+                  <td className="px-3 py-2 text-[#0e7c86]">{formatCodeLabel(n.centro_custo)}</td>
+                  <td className="px-3 py-2 text-[#0e7c86]">{formatNumeroNota(n.numero_nota)}</td>
+                  <td className="px-3 py-2 text-[#0e7c86]">{formatCurrency(n.valor)}</td>
+                  <td className="px-3 py-2 text-[#0e7c86]">{formatDate(n.data_emissao)}</td>
+                  <td className="px-3 py-2 text-[#0e7c86]">{formatDate(n.data_programacao)}</td>
+                  <td className="px-3 py-2 text-right">
                     <button
                       type="button"
                       onClick={() => setViewing(n)}
                       title="Ver mais"
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-[#2f6fed] hover:bg-gray-100"
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-[#0e7c86] hover:bg-gray-100"
                     >
                       <EyeIcon className="h-4 w-4" />
                       Ver mais
@@ -1096,10 +1308,16 @@ export default function NotasFiscaisPage() {
       </div>
 
       <FormModal open={formOpen} onClose={() => setFormOpen(false)} onSaved={handleSaved} />
-      <DetailModal nota={viewing} onClose={() => setViewing(null)} />
+      <DetailModal nota={viewing} onClose={() => setViewing(null)} onDeleteRequest={handleDeleteRequest} />
+      <DeleteModal
+        nota={deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={handleDeleteConfirm}
+        deleting={deleteBusy}
+      />
 
       {toast && (
-        <div className="fixed right-6 bottom-6 z-50 rounded-lg bg-[#13294b] px-4 py-3 text-sm text-white shadow-xl">{toast}</div>
+        <div className="fixed right-6 bottom-6 z-50 rounded-lg bg-[#0e7c86] px-4 py-3 text-sm text-white shadow-xl">{toast}</div>
       )}
     </div>
   )
