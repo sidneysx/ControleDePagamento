@@ -1,0 +1,1 @@
+{"root":["./src/auth.ts","./src/db.ts","./src/drop-all-tables.ts","./src/index.ts","./src/migrate.ts","./src/middleware/requireauth.ts","./src/routes/auth.ts","./src/routes/fornecedores.ts","./src/routes/notas.ts","./src/routes/regionais.ts","./src/routes/seccionais.ts"],"version":"6.0.3"}

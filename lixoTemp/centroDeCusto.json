@@ -1,0 +1,99 @@
+[
+  {
+    "centro_custo": "FROTA",
+    "categorias": [
+      "COMBUSTÍVEL",
+      "LAVAGEM DE VEICULOS",
+      "LINCENCIAMENTO/MULTAS/IPVA",
+      "LUBRIFICANTES",
+      "PEÇAS",
+      "PEÇAS - SERVIÇOS",
+      "PEÇAS E LUBRIFICANTES",
+      "PNEU",
+      "SERV. DE BORRACHARIA",
+      "SERV. TERCEIRIZADOS",
+      "TACOGRAFO",
+      "FERR. TRABALHO"
+    ]
+  },
+  {
+    "centro_custo": "ALMOXARIFADO",
+    "categorias": [
+      "EPI/EPC E FERRAMENTAL",
+      "FARDAMENTO ADM",
+      "FRETE",
+      "PEÇAS DE FERRAMENTA E MÁQUINAS",
+      "SERV. TERCEIRIZADOS"
+    ]
+  },
+  {
+    "centro_custo": "DESP_FIXA",
+    "categorias": [
+      "ALUGUEL",
+      "ALUGUEL DE EQUIPAMENTOS",
+      "FAT. AGUA",
+      "FAT. ENERGIA",
+      "HOSPEDAGEM",
+      "INTERNET",
+      "PROTEÇÃO PATRIMONIAL",
+      "TELEFONIA"
+    ]
+  },
+  {
+    "centro_custo": "DESP_ADMINISTRATIVA",
+    "categorias": [
+      "CAIXA",
+      "CONSUMO PRÓPRIO",
+      "GELO",
+      "MAT. DE LIMPEZA",
+      "MAT. EXPEDIENTE",
+      "MÓVEIS E UTENSÍLIOS",
+      "PROCESSOS JUDICIAIS TERCEIROS",
+      "REEMBOLSO",
+      "SER. TERCERIZADOS"
+    ]
+  },
+  {
+    "centro_custo": "ALIMENTAÇÃO_HOSPEDAGEM",
+    "categorias": [
+      "ALIMENTAÇÃO",
+      "ALIMENTAÇÃO_HOSPEDAGEM",
+      "HOSPEDAGEM"
+    ]
+  },
+  {
+    "centro_custo": "MANUTENCAO_PREDIAL",
+    "categorias": [
+      "FERR. DE TRAB.",
+      "FERRAGENS",
+      "MATERIAL DE CONSTRUÇÃO",
+      "SERV. TERCERIZADOS"
+    ]
+  },
+  {
+    "centro_custo": "TI",
+    "categorias": [
+      "CELULARES",
+      "COMPUTADORES",
+      "PERIFÉRICOS",
+      "SER. TERCERIZADOS"
+    ]
+  },
+  {
+    "centro_custo": "TAXAS_E_TRIBUTOS",
+    "categorias": [
+      "ICMS/DIFAL",
+      "PIS/COFINS",
+      "RETENÇÃO",
+      "TAXAS"
+    ]
+  },
+  {
+    "centro_custo": "OBRA_OPERACIONAL",
+    "categorias": [
+      "ALUGUEL DE EQUIPAMENTOS",
+      "MATERIAL DE CONSTRUÇÃO",
+      "SERV. TERCERIZADOS"
+    ]
+  }
+]
