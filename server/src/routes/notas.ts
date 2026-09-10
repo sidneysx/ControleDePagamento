@@ -18,6 +18,14 @@ function str(v: unknown): string {
   return typeof v === 'string' ? v.trim() : ''
 }
 
+function onlyDigits(v: string): string {
+  return v.replace(/\D/g, '')
+}
+
+function normalizeNumeroNota(v: string): string {
+  return onlyDigits(v).slice(0, 9).padStart(9, '0')
+}
+
 function includes<T extends string>(list: readonly T[], value: string): value is T {
   return (list as readonly string[]).includes(value)
 }
@@ -53,7 +61,7 @@ notasRouter.post('/', uploadMiddleware, async (req, res) => {
   const cidade = str(b.cidade)
   const uf = str(b.uf).toUpperCase()
   const fornecedor_id = Number(b.fornecedor_id)
-  const numero_nota = str(b.numero_nota)
+  const numeroNotaDigits = onlyDigits(str(b.numero_nota))
   const valor = Number(b.valor)
   const data_emissao = str(b.data_emissao)
   const placa = str(b.placa)
@@ -81,7 +89,7 @@ notasRouter.post('/', uploadMiddleware, async (req, res) => {
     !uf ||
     !Number.isInteger(fornecedor_id) ||
     fornecedor_id <= 0 ||
-    !numero_nota ||
+    !numeroNotaDigits ||
     !Number.isFinite(valor) ||
     valor <= 0 ||
     !data_emissao ||
@@ -151,6 +159,8 @@ notasRouter.post('/', uploadMiddleware, async (req, res) => {
     return
   }
 
+  const numero_nota = normalizeNumeroNota(numeroNotaDigits)
+
   try {
     const inserted = await pool.query(
       `INSERT INTO notas_fiscais
@@ -206,7 +216,13 @@ notasRouter.post('/', uploadMiddleware, async (req, res) => {
 })
 
 notasRouter.get('/', async (_req, res) => {
-  const result = await pool.query('SELECT * FROM notas_fiscais ORDER BY created_at DESC')
+  const result = await pool.query(`
+    SELECT n.*, f.razao_social AS fornecedor_razao_social, f.cpf_cnpj AS fornecedor_cpf_cnpj, u.username AS created_by_username
+    FROM notas_fiscais n
+    LEFT JOIN fornecedores f ON f.id = n.fornecedor_id
+    LEFT JOIN users u ON u.id = n.created_by
+    ORDER BY n.created_at DESC
+  `)
   res.json({ data: result.rows })
 })
 

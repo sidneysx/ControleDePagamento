@@ -196,6 +196,44 @@ export type NotaFiles = {
   notaFiscal?: File | null
 }
 
+export type Nota = {
+  id: number
+  numero: string
+  operacao: string
+  regional: string
+  seccional: string
+  cidade: string
+  uf: string
+  fornecedor_id: number | null
+  fornecedor_razao_social: string | null
+  fornecedor_cpf_cnpj: string | null
+  numero_nota: string
+  valor: string
+  data_emissao: string
+  placa: string | null
+  descricao: string | null
+  contrato: string
+  centro_custo: string
+  categoria: string
+  observacao: string | null
+  tipo_pagamento: string
+  pagamento_favorecido: string
+  pagamento_cpf_cnpj: string
+  pagamento_banco: string | null
+  pagamento_agencia: string | null
+  pagamento_conta: string | null
+  pagamento_pix_tipo_chave: string | null
+  pagamento_pix_chave: string | null
+  boleto_arquivo: string | null
+  boleto_arquivo_nome: string | null
+  data_programacao: string
+  nota_fiscal_arquivo: string | null
+  nota_fiscal_arquivo_nome: string | null
+  created_by: number
+  created_by_username: string | null
+  created_at: string
+}
+
 export function createNota(payload: NotaPayload, files: NotaFiles = {}) {
   const formData = new FormData()
   for (const [key, value] of Object.entries(payload)) {
@@ -204,7 +242,15 @@ export function createNota(payload: NotaPayload, files: NotaFiles = {}) {
   if (files.boleto) formData.append('boleto_arquivo', files.boleto)
   if (files.notaFiscal) formData.append('nota_fiscal_arquivo', files.notaFiscal)
 
-  return requestForm<{ nota: unknown }>('/notas', formData)
+  return requestForm<{ nota: Nota }>('/notas', formData)
+}
+
+export function listNotas() {
+  return request<{ data: Nota[] }>('/notas')
+}
+
+export function notaArquivoUrl(id: number, campo: 'boleto' | 'nota_fiscal') {
+  return `/api/notas/${id}/arquivo/${campo}`
 }
 
 export type Regional = { id: number; nome: string }
