@@ -3,8 +3,8 @@ import { pool } from '../db.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 
 export const seccionaisRouter = Router()
-seccionaisRouter.use(requireAuth)
 
+// listagem é pública: a tela de solicitação de acesso (sem login) precisa exibir as seccionais
 seccionaisRouter.get('/', async (req, res) => {
   const regional = typeof req.query.regional === 'string' ? req.query.regional.trim() : ''
   if (!regional) {
@@ -22,7 +22,7 @@ seccionaisRouter.get('/', async (req, res) => {
   res.json({ data: result.rows })
 })
 
-seccionaisRouter.post('/', async (req, res) => {
+seccionaisRouter.post('/', requireAuth, async (req, res) => {
   const nome = typeof req.body?.nome === 'string' ? req.body.nome.trim() : ''
   const regional = typeof req.body?.regional === 'string' ? req.body.regional.trim() : ''
   if (!nome || !regional) {

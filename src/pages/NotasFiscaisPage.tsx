@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Modal from '../components/Modal'
 import NotasTable from '../components/NotasTable'
-import CreatableSelect from '../components/CreatableSelect'
+import LabeledSelect from '../components/LabeledSelect'
 import * as api from '../lib/api'
 import type { Fornecedor, Nota, NotaPayload } from '../lib/api'
 import { useMunicipios, useUFs } from '../lib/ibge'
@@ -339,8 +339,8 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
 
   const { ufs } = useUFs()
   const { municipios, loading: municipiosLoading } = useMunicipios(form.uf)
-  const { regionais, loading: regionaisLoading, reload: reloadRegionais } = useRegionais()
-  const { seccionais, loading: seccionaisLoading, reload: reloadSeccionais } = useSeccionais(form.regional)
+  const { regionais, loading: regionaisLoading } = useRegionais()
+  const { seccionais, loading: seccionaisLoading } = useSeccionais(form.regional)
   const { centrosCusto, loading: centrosCustoLoading } = useCentrosCusto()
 
   const centroCustoOptions = toOptions(centrosCusto.map((c) => c.centro_custo))
@@ -359,16 +359,6 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
 
   function set<K extends keyof NotaPayload>(key: K, value: NotaPayload[K]) {
     setForm((f) => ({ ...f, [key]: value }))
-  }
-
-  async function handleCreateRegional(nome: string) {
-    await api.createRegional(nome)
-    reloadRegionais()
-  }
-
-  async function handleCreateSeccional(nome: string) {
-    await api.createSeccional(nome, form.regional)
-    reloadSeccionais()
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -480,7 +470,7 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
               </select>
             </div>
 
-            <CreatableSelect
+            <LabeledSelect
               id="regional"
               label="Regional"
               value={form.regional}
@@ -490,17 +480,15 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
               }}
               options={regionais}
               loading={regionaisLoading}
-              onCreate={handleCreateRegional}
             />
 
-            <CreatableSelect
+            <LabeledSelect
               id="seccional"
               label="Seccional"
               value={form.seccional}
               onChange={(v) => set('seccional', v)}
               options={seccionais}
               loading={seccionaisLoading}
-              onCreate={handleCreateSeccional}
               disabled={!form.regional}
               disabledPlaceholder="Selecione a Regional primeiro"
             />

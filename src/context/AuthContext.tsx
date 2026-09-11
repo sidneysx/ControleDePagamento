@@ -12,7 +12,7 @@ type AuthContextValue = {
   user: User | null
   loading: boolean
   login: (username: string, password: string, remember: boolean) => Promise<void>
-  register: (payload: RegisterPayload) => Promise<void>
+  register: (payload: RegisterPayload) => Promise<string>
   logout: () => Promise<void>
 }
 
@@ -36,8 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(payload: RegisterPayload) {
-    const { user } = await api.register(payload)
-    setUser(user)
+    const { message } = await api.register(payload)
+    return message
   }
 
   async function logout() {

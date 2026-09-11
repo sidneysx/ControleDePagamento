@@ -27,6 +27,7 @@ type UserRow = {
   seccional: string
   setor: string | null
   role: string
+  status: string
 }
 
 authRouter.post('/register', async (req, res) => {
@@ -55,17 +56,14 @@ authRouter.post('/register', async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10)
 
   try {
-    const result = await pool.query<UserRow>(
-      `INSERT INTO users (username, email, password_hash, regional, seccional)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, username, email, regional, seccional, setor, role`,
+    await pool.query(
+      `INSERT INTO users (username, email, password_hash, regional, seccional, status)
+       VALUES ($1, $2, $3, $4, $5, 'pendente')`,
       [username.trim(), email.toLowerCase().trim(), passwordHash, regional.trim(), seccional.trim()],
     )
-    const user = result.rows[0]
-
-    const token = signSession({ userId: user.id }, '1d')
-    res.cookie(SESSION_COOKIE, token, { ...baseCookieOptions(), maxAge: DEFAULT_MAX_AGE })
-    res.status(201).json({ user })
+    res.status(201).json({
+      message: 'Solicitação de acesso enviada. Um administrador precisa aprovar antes que você possa entrar.',
+    })
   } catch (err: unknown) {
     if (isUniqueViolation(err)) {
       res.status(409).json({ error: 'Usuário ou e-mail já cadastrado.' })
@@ -84,7 +82,7 @@ authRouter.post('/login', async (req, res) => {
   }
 
   const result = await pool.query<UserRow & { password_hash: string }>(
-    'SELECT id, username, email, regional, seccional, setor, role, password_hash FROM users WHERE username = $1',
+    'SELECT id, username, email, regional, seccional, setor, role, status, password_hash FROM users WHERE username = $1',
     [username.trim()],
   )
   const row = result.rows[0]
@@ -92,6 +90,11 @@ authRouter.post('/login', async (req, res) => {
   const passwordMatches = row ? await bcrypt.compare(password, row.password_hash) : false
   if (!row || !passwordMatches) {
     res.status(401).json({ error: 'Usuário ou senha inválidos.' })
+    return
+  }
+
+  if (row.status !== 'aprovado') {
+    res.status(403).json({ error: 'Sua solicitação de acesso ainda está pendente de aprovação por um administrador.' })
     return
   }
 
@@ -109,6 +112,7 @@ authRouter.post('/login', async (req, res) => {
       seccional: row.seccional,
       setor: row.setor,
       role: row.role,
+      status: row.status,
     },
   })
 })
@@ -120,7 +124,7 @@ authRouter.post('/logout', (_req, res) => {
 
 authRouter.get('/me', requireAuth, async (req, res) => {
   const result = await pool.query<UserRow>(
-    'SELECT id, username, email, regional, seccional, setor, role FROM users WHERE id = $1',
+    'SELECT id, username, email, regional, seccional, setor, role, status FROM users WHERE id = $1',
     [req.userId],
   )
   const user = result.rows[0]

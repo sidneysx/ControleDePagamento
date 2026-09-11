@@ -163,7 +163,7 @@ export default function LoginPage() {
               strokeLinecap="round"
             />
           </svg>
-          Criar conta
+          Solicitar Acesso
         </Link>
       </form>
 

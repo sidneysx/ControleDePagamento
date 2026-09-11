@@ -18,6 +18,7 @@ type UserRow = {
   seccional: string
   setor: string | null
   role: string
+  status: string
   created_at: string
 }
 
@@ -31,7 +32,8 @@ function isUniqueViolation(err: unknown): boolean {
 
 usersRouter.get('/', async (_req, res) => {
   const result = await pool.query<UserRow>(
-    'SELECT id, username, email, regional, seccional, setor, role, created_at FROM users ORDER BY username',
+    `SELECT id, username, email, regional, seccional, setor, role, status, created_at FROM users
+     ORDER BY (status = 'pendente') DESC, username`,
   )
   res.json({ data: result.rows })
 })
@@ -65,7 +67,7 @@ usersRouter.post('/', async (req, res) => {
     const inserted = await pool.query<UserRow>(
       `INSERT INTO users (username, email, password_hash, regional, seccional, setor, role)
        VALUES ($1,$2,$3,$4,$5,$6,$7)
-       RETURNING id, username, email, regional, seccional, setor, role, created_at`,
+       RETURNING id, username, email, regional, seccional, setor, role, status, created_at`,
       [username, email, passwordHash, regional, seccional, setor, role],
     )
     res.status(201).json({ user: inserted.rows[0] })
@@ -110,7 +112,7 @@ usersRouter.put('/:id', async (req, res) => {
     const updated = await pool.query<UserRow>(
       `UPDATE users SET username = $1, email = $2, regional = $3, seccional = $4, setor = $5, role = $6
        WHERE id = $7
-       RETURNING id, username, email, regional, seccional, setor, role, created_at`,
+       RETURNING id, username, email, regional, seccional, setor, role, status, created_at`,
       [username, email, regional, seccional, setor, role, id],
     )
     const user = updated.rows[0]
@@ -126,6 +128,26 @@ usersRouter.put('/:id', async (req, res) => {
     }
     throw err
   }
+})
+
+usersRouter.put('/:id/aprovar', async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: 'ID inválido.' })
+    return
+  }
+
+  const updated = await pool.query<UserRow>(
+    `UPDATE users SET status = 'aprovado' WHERE id = $1
+     RETURNING id, username, email, regional, seccional, setor, role, status, created_at`,
+    [id],
+  )
+  const user = updated.rows[0]
+  if (!user) {
+    res.status(404).json({ error: 'Usuário não encontrado.' })
+    return
+  }
+  res.json({ user })
 })
 
 usersRouter.put('/:id/senha', async (req, res) => {

@@ -6,6 +6,7 @@ export type User = {
   seccional: string
   setor: string | null
   role: string
+  status: string
 }
 
 export type RegisterPayload = {
@@ -66,7 +67,7 @@ export function login(username: string, password: string, remember: boolean) {
 }
 
 export function register(payload: RegisterPayload) {
-  return request<{ user: User }>('/auth/register', {
+  return request<{ message: string }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
@@ -325,6 +326,10 @@ export function updateUserPassword(id: number, password: string) {
 
 export function deleteUser(id: number) {
   return request<void>(`/users/${id}`, { method: 'DELETE' })
+}
+
+export function approveUser(id: number) {
+  return request<{ user: User }>(`/users/${id}/aprovar`, { method: 'PUT' })
 }
 
 export type Regional = { id: number; nome: string }

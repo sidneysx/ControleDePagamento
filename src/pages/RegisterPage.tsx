@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import { useAuth } from '../context/AuthContext'
+import LabeledSelect from '../components/LabeledSelect'
+import { useRegionais, useSeccionais } from '../hooks/useRegionaisSeccionais'
 
 type FieldProps = {
   id: string
@@ -37,7 +39,6 @@ const PASSWORD_HINT = 'A senha deve ter ao menos 8 caracteres, incluindo um núm
 
 export default function RegisterPage() {
   const { user, register } = useAuth()
-  const navigate = useNavigate()
 
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -47,6 +48,10 @@ export default function RegisterPage() {
   const [seccional, setSeccional] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState<string | null>(null)
+
+  const { regionais, loading: regionaisLoading } = useRegionais()
+  const { seccionais, loading: seccionaisLoading } = useSeccionais(regional)
 
   if (user) {
     return <Navigate to="/" replace />
@@ -66,21 +71,43 @@ export default function RegisterPage() {
       return
     }
 
+    if (!regional || !seccional) {
+      setError('Regional e seccional são obrigatórios.')
+      return
+    }
+
     setSubmitting(true)
     try {
-      await register({ username, email, password, regional, seccional })
-      navigate('/', { replace: true })
+      const message = await register({ username, email, password, regional, seccional })
+      setSubmitted(message)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível criar a conta.')
+      setError(err instanceof Error ? err.message : 'Não foi possível enviar a solicitação.')
     } finally {
       setSubmitting(false)
     }
   }
 
+  if (submitted) {
+    return (
+      <AuthLayout>
+        <h1 className="text-center text-2xl font-bold text-[#0e7c86]">Solicitação enviada!</h1>
+        <p className="mt-3 text-center text-sm text-gray-600">{submitted}</p>
+        <Link
+          to="/login"
+          className="mt-6 block rounded-lg bg-[#0e7c86] px-4 py-2.5 text-center font-medium text-white transition-colors hover:bg-[#0a616a]"
+        >
+          Voltar para o login
+        </Link>
+      </AuthLayout>
+    )
+  }
+
   return (
     <AuthLayout>
-      <h1 className="text-center text-2xl font-bold text-[#0e7c86]">Criar conta</h1>
-      <p className="mt-1 text-center text-sm text-gray-500">Preencha os dados para acessar o sistema</p>
+      <h1 className="text-center text-2xl font-bold text-[#0e7c86]">Solicitar Acesso</h1>
+      <p className="mt-1 text-center text-sm text-gray-500">
+        Preencha os dados abaixo. Um administrador precisa aprovar antes que você possa entrar.
+      </p>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
         <Field id="username" label="Usuário" autoComplete="username" value={username} onChange={setUsername} />
@@ -105,8 +132,27 @@ export default function RegisterPage() {
         />
 
         <div className="grid grid-cols-2 gap-4">
-          <Field id="regional" label="Regional" value={regional} onChange={setRegional} />
-          <Field id="seccional" label="Seccional" value={seccional} onChange={setSeccional} />
+          <LabeledSelect
+            id="regional"
+            label="Regional"
+            value={regional}
+            onChange={(v) => {
+              setRegional(v)
+              setSeccional('')
+            }}
+            options={regionais}
+            loading={regionaisLoading}
+          />
+          <LabeledSelect
+            id="seccional"
+            label="Seccional"
+            value={seccional}
+            onChange={setSeccional}
+            options={seccionais}
+            loading={seccionaisLoading}
+            disabled={!regional}
+            disabledPlaceholder="Selecione a Regional primeiro"
+          />
         </div>
 
         {error && (
@@ -120,7 +166,7 @@ export default function RegisterPage() {
           disabled={submitting}
           className="mt-1 rounded-lg bg-[#0e7c86] px-4 py-2.5 font-medium text-white transition-colors hover:bg-[#0a616a] disabled:opacity-50"
         >
-          {submitting ? 'Criando conta...' : 'Criar conta'}
+          {submitting ? 'Enviando...' : 'Solicitar Acesso'}
         </button>
 
         <Link to="/login" className="text-center text-sm text-[#0e7c86] hover:underline">

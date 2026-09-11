@@ -108,6 +108,10 @@ const sql = `
 
   -- created_by tinha ON DELETE SET NULL mas era NOT NULL, o que quebraria ao apagar um usuário
   ALTER TABLE notas_fiscais ALTER COLUMN created_by DROP NOT NULL;
+
+  -- solicitações de acesso: usuários que se auto-cadastram entram como 'pendente'
+  -- até um admin aprovar; usuários já existentes e criados por admin já entram 'aprovado'
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aprovado';
 `
 
 async function main() {

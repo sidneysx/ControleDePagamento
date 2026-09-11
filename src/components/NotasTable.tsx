@@ -19,6 +19,36 @@ function EyeIcon({ className }: { className?: string }) {
   )
 }
 
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M4 20l.9-3.6L16.4 5 19 7.6 7.6 19l-3.6.9z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M14.5 6.9L17 4.4a1.5 1.5 0 012.1 0l.5.5a1.5 1.5 0 010 2.1L17.1 9.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function fmt(value: string | null | undefined): string {
   return value && value.trim() ? value : '—'
 }
@@ -72,14 +102,25 @@ function PdfFileLinks({
   )
 }
 
-function EditableDataProgramacao({ nota, onSaved }: { nota: Nota; onSaved: () => void }) {
+function useEditableDataProgramacao(nota: Nota, onSaved: () => void) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(nota.data_programacao)
   const [current, setCurrent] = useState(nota.data_programacao)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleSave() {
+  function startEdit() {
+    setValue(current)
+    setError(null)
+    setEditing(true)
+  }
+
+  function cancelEdit() {
+    setEditing(false)
+    setError(null)
+  }
+
+  async function save() {
     if (!value) return
     setSaving(true)
     setError(null)
@@ -95,20 +136,22 @@ function EditableDataProgramacao({ nota, onSaved }: { nota: Nota; onSaved: () =>
     }
   }
 
+  return { editing, value, setValue, current, saving, error, startEdit, cancelEdit, save }
+}
+
+function EditableDataProgramacao({ nota, onSaved }: { nota: Nota; onSaved: () => void }) {
+  const { editing, value, setValue, current, saving, error, startEdit, cancelEdit, save } = useEditableDataProgramacao(
+    nota,
+    onSaved,
+  )
+
   if (!editing) {
     return (
       <div>
         <dt className="text-xs font-medium tracking-wide text-gray-400 uppercase">Data da Programação</dt>
         <dd className="flex items-center gap-2 text-sm text-[#0e7c86]">
           {formatDate(current)}
-          <button
-            type="button"
-            onClick={() => {
-              setValue(current)
-              setEditing(true)
-            }}
-            className="text-xs font-medium text-[#0e7c86] hover:underline"
-          >
+          <button type="button" onClick={startEdit} className="text-xs font-medium text-[#0e7c86] hover:underline">
             Editar
           </button>
         </dd>
@@ -129,18 +172,67 @@ function EditableDataProgramacao({ nota, onSaved }: { nota: Nota; onSaved: () =>
           />
           <button
             type="button"
-            onClick={handleSave}
+            onClick={save}
             disabled={saving}
             className="rounded-lg bg-[#0e7c86] px-2 py-1 text-xs font-medium text-white hover:bg-[#0a616a] disabled:opacity-50"
           >
             {saving ? '...' : 'Salvar'}
           </button>
-          <button type="button" onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:underline">
+          <button type="button" onClick={cancelEdit} className="text-xs text-gray-500 hover:underline">
             Cancelar
           </button>
         </div>
         {error && <span className="text-xs text-red-500">{error}</span>}
       </dd>
+    </div>
+  )
+}
+
+function EditableDataProgramacaoCell({ nota, onSaved }: { nota: Nota; onSaved: () => void }) {
+  const { editing, value, setValue, current, saving, error, startEdit, cancelEdit, save } = useEditableDataProgramacao(
+    nota,
+    onSaved,
+  )
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span>{formatDate(current)}</span>
+        <button
+          type="button"
+          onClick={startEdit}
+          title="Editar data da programação"
+          className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-[#0e7c86]"
+        >
+          <PencilIcon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1">
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="rounded-lg border border-gray-200 px-1.5 py-1 text-xs text-[#0e7c86] outline-none focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20"
+        />
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          title="Salvar"
+          className="rounded p-1 text-green-600 hover:bg-green-50 disabled:opacity-50"
+        >
+          <CheckIcon className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" onClick={cancelEdit} title="Cancelar" className="rounded p-1 text-gray-400 hover:bg-gray-100">
+          <CloseIcon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {error && <span className="text-xs text-red-500">{error}</span>}
     </div>
   )
 }
@@ -418,7 +510,13 @@ export default function NotasTable({
                   <td className="px-3 py-2 text-[#0e7c86]">{formatNumeroNota(n.numero_nota)}</td>
                   <td className="px-3 py-2 text-[#0e7c86]">{formatCurrency(n.valor)}</td>
                   <td className="px-3 py-2 text-[#0e7c86]">{formatDate(n.data_emissao)}</td>
-                  <td className="px-3 py-2 text-[#0e7c86]">{formatDate(n.data_programacao)}</td>
+                  <td className="px-3 py-2 text-[#0e7c86]">
+                    {isAdmin ? (
+                      <EditableDataProgramacaoCell nota={n} onSaved={onReload} />
+                    ) : (
+                      formatDate(n.data_programacao)
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <button
                       type="button"

@@ -36,11 +36,14 @@ function isAdmin(role: string): boolean {
   return role === ADMIN_ROLE
 }
 
-async function getCurrentUser(userId: number | undefined): Promise<{ role: string; regional: string } | null> {
+async function getCurrentUser(
+  userId: number | undefined,
+): Promise<{ role: string; regional: string; seccional: string } | null> {
   if (!userId) return null
-  const result = await pool.query<{ role: string; regional: string }>('SELECT role, regional FROM users WHERE id = $1', [
-    userId,
-  ])
+  const result = await pool.query<{ role: string; regional: string; seccional: string }>(
+    'SELECT role, regional, seccional FROM users WHERE id = $1',
+    [userId],
+  )
   return result.rows[0] ?? null
 }
 
@@ -244,10 +247,11 @@ notasRouter.get('/', async (req, res) => {
   const search = str(req.query.search)
   const dataProgramacao = str(req.query.data_programacao)
   let regional = str(req.query.regional)
-  const seccional = str(req.query.seccional)
+  let seccional = str(req.query.seccional)
 
   if (!isAdmin(currentUser.role)) {
     regional = currentUser.regional
+    seccional = currentUser.seccional
   }
 
   const conditions: string[] = []
@@ -301,8 +305,8 @@ notasRouter.get('/programacoes', async (req, res) => {
   const params: unknown[] = []
   let whereClause = 'WHERE data_programacao IS NOT NULL'
   if (!isAdmin(currentUser.role)) {
-    params.push(currentUser.regional)
-    whereClause += ` AND regional = $${params.length}`
+    params.push(currentUser.regional, currentUser.seccional)
+    whereClause += ` AND regional = $${params.length - 1} AND seccional = $${params.length}`
   }
 
   const result = await pool.query<{ data_programacao: string; total_notas: string; valor_total: string }>(
@@ -368,8 +372,8 @@ notasRouter.delete('/:id', async (req, res) => {
   const conditions = ['id = $1']
   const params: unknown[] = [id]
   if (!isAdmin(currentUser.role)) {
-    params.push(currentUser.regional)
-    conditions.push(`regional = $${params.length}`)
+    params.push(currentUser.regional, currentUser.seccional)
+    conditions.push(`regional = $${params.length - 1}`, `seccional = $${params.length}`)
   }
 
   const deleted = await pool.query<{ boleto_arquivo: string | null; nota_fiscal_arquivo: string | null }>(
@@ -407,8 +411,8 @@ notasRouter.get('/:id/arquivo/:campo', async (req, res) => {
 
   const column = campo === 'boleto' ? 'boleto_arquivo' : 'nota_fiscal_arquivo'
   const nameColumn = campo === 'boleto' ? 'boleto_arquivo_nome' : 'nota_fiscal_arquivo_nome'
-  const result = await pool.query<{ arquivo: string | null; nome: string | null; regional: string }>(
-    `SELECT ${column} AS arquivo, ${nameColumn} AS nome, regional FROM notas_fiscais WHERE id = $1`,
+  const result = await pool.query<{ arquivo: string | null; nome: string | null; regional: string; seccional: string }>(
+    `SELECT ${column} AS arquivo, ${nameColumn} AS nome, regional, seccional FROM notas_fiscais WHERE id = $1`,
     [id],
   )
   const row = result.rows[0]
@@ -416,7 +420,7 @@ notasRouter.get('/:id/arquivo/:campo', async (req, res) => {
     res.status(404).json({ error: 'Arquivo não encontrado.' })
     return
   }
-  if (!isAdmin(currentUser.role) && row.regional !== currentUser.regional) {
+  if (!isAdmin(currentUser.role) && (row.regional !== currentUser.regional || row.seccional !== currentUser.seccional)) {
     res.status(404).json({ error: 'Arquivo não encontrado.' })
     return
   }

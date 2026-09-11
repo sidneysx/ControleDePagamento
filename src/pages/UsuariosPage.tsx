@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import Modal from '../components/Modal'
-import CreatableSelect from '../components/CreatableSelect'
+import LabeledSelect from '../components/LabeledSelect'
 import * as api from '../lib/api'
 import type { User, UserPayload } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -75,6 +75,14 @@ function KeyIcon({ className }: { className?: string }) {
   )
 }
 
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function TrashIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
@@ -106,8 +114,8 @@ function FormModal({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const { regionais, loading: regionaisLoading, reload: reloadRegionais } = useRegionais()
-  const { seccionais, loading: seccionaisLoading, reload: reloadSeccionais } = useSeccionais(form.regional)
+  const { regionais, loading: regionaisLoading } = useRegionais()
+  const { seccionais, loading: seccionaisLoading } = useSeccionais(form.regional)
 
   useEffect(() => {
     if (!open) return
@@ -130,16 +138,6 @@ function FormModal({
 
   function set<K extends keyof UserPayload>(key: K, value: UserPayload[K]) {
     setForm((f) => ({ ...f, [key]: value }))
-  }
-
-  async function handleCreateRegional(nome: string) {
-    await api.createRegional(nome)
-    reloadRegionais()
-  }
-
-  async function handleCreateSeccional(nome: string) {
-    await api.createSeccional(nome, form.regional)
-    reloadSeccionais()
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -230,7 +228,7 @@ function FormModal({
               />
             </>
           )}
-          <CreatableSelect
+          <LabeledSelect
             id="regional"
             label="Regional"
             value={form.regional}
@@ -240,16 +238,14 @@ function FormModal({
             }}
             options={regionais}
             loading={regionaisLoading}
-            onCreate={handleCreateRegional}
           />
-          <CreatableSelect
+          <LabeledSelect
             id="seccional"
             label="Seccional"
             value={form.seccional}
             onChange={(v) => set('seccional', v)}
             options={seccionais}
             loading={seccionaisLoading}
-            onCreate={handleCreateSeccional}
             disabled={!form.regional}
             disabledPlaceholder="Selecione a Regional primeiro"
           />
@@ -454,6 +450,16 @@ export default function UsuariosPage() {
     setToast('Senha alterada com sucesso.')
   }
 
+  async function handleApprove(u: User) {
+    try {
+      await api.approveUser(u.id)
+      setToast(`Acesso de ${u.username} aprovado.`)
+      reload()
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : 'Erro ao aprovar usuário.')
+    }
+  }
+
   async function handleDeleteConfirm() {
     if (!deleting) return
     setDeleteBusy(true)
@@ -492,6 +498,7 @@ export default function UsuariosPage() {
               <th className="px-3 py-2 text-left">Seccional</th>
               <th className="px-3 py-2 text-left">Setor</th>
               <th className="px-3 py-2 text-left">Papel</th>
+              <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-right">Ações</th>
             </tr>
           </thead>
@@ -500,7 +507,7 @@ export default function UsuariosPage() {
               <>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-3 py-2">
                         <div className="h-4 animate-pulse rounded bg-gray-200" />
                       </td>
@@ -510,19 +517,19 @@ export default function UsuariosPage() {
               </>
             ) : loadError ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-red-500">
+                <td colSpan={8} className="px-4 py-10 text-center text-sm text-red-500">
                   {loadError}
                 </td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-sm text-gray-400">
                   Nenhum usuário cadastrado.
                 </td>
               </tr>
             ) : (
               data.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
+                <tr key={u.id} className={u.status === 'pendente' ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-gray-50'}>
                   <td className="px-3 py-2 text-[#0e7c86]">{u.username}</td>
                   <td className="px-3 py-2 text-[#0e7c86]">{u.email}</td>
                   <td className="px-3 py-2 text-[#0e7c86]">{u.regional}</td>
@@ -530,7 +537,26 @@ export default function UsuariosPage() {
                   <td className="px-3 py-2 text-[#0e7c86]">{u.setor ?? '—'}</td>
                   <td className="px-3 py-2 text-[#0e7c86]">{roleLabel(u.role)}</td>
                   <td className="px-3 py-2">
+                    {u.status === 'pendente' ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                        Pendente
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-500">Aprovado</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
                     <div className="flex items-center justify-end gap-1 text-gray-400">
+                      {u.status === 'pendente' && (
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(u)}
+                          title="Aprovar acesso"
+                          className="rounded-lg p-1.5 text-green-600 hover:bg-green-50"
+                        >
+                          <CheckIcon className="h-4 w-4" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openEdit(u)}
