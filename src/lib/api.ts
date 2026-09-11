@@ -248,14 +248,28 @@ export function createNota(payload: NotaPayload, files: NotaFiles = {}) {
 export type NotasQuery = {
   search?: string
   dataProgramacao?: string
+  regional?: string
+  seccional?: string
 }
 
 export function listNotas(query: NotasQuery = {}) {
   const params = new URLSearchParams()
   if (query.search) params.set('search', query.search)
   if (query.dataProgramacao) params.set('data_programacao', query.dataProgramacao)
+  if (query.regional) params.set('regional', query.regional)
+  if (query.seccional) params.set('seccional', query.seccional)
   const qs = params.toString()
   return request<{ data: Nota[] }>(`/notas${qs ? `?${qs}` : ''}`)
+}
+
+export type Programacao = {
+  data_programacao: string
+  total_notas: string
+  valor_total: string
+}
+
+export function listProgramacoes() {
+  return request<{ data: Programacao[] }>('/notas/programacoes')
 }
 
 export function deleteNota(id: number) {

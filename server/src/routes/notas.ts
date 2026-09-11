@@ -223,6 +223,8 @@ notasRouter.post('/', uploadMiddleware, async (req, res) => {
 notasRouter.get('/', async (req, res) => {
   const search = str(req.query.search)
   const dataProgramacao = str(req.query.data_programacao)
+  const regional = str(req.query.regional)
+  const seccional = str(req.query.seccional)
 
   const conditions: string[] = []
   const params: unknown[] = []
@@ -242,6 +244,14 @@ notasRouter.get('/', async (req, res) => {
     params.push(dataProgramacao)
     conditions.push(`n.data_programacao = $${params.length}`)
   }
+  if (regional) {
+    params.push(regional)
+    conditions.push(`n.regional = $${params.length}`)
+  }
+  if (seccional) {
+    params.push(seccional)
+    conditions.push(`n.seccional = $${params.length}`)
+  }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
 
@@ -253,6 +263,17 @@ notasRouter.get('/', async (req, res) => {
     ${whereClause}
     ORDER BY n.created_at DESC`,
     params,
+  )
+  res.json({ data: result.rows })
+})
+
+notasRouter.get('/programacoes', async (_req, res) => {
+  const result = await pool.query<{ data_programacao: string; total_notas: string; valor_total: string }>(
+    `SELECT data_programacao, count(*) AS total_notas, sum(valor) AS valor_total
+     FROM notas_fiscais
+     WHERE data_programacao IS NOT NULL
+     GROUP BY data_programacao
+     ORDER BY data_programacao DESC`,
   )
   res.json({ data: result.rows })
 })

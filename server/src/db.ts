@@ -1,4 +1,8 @@
-import { Pool } from 'pg'
+import { Pool, types } from 'pg'
+
+// return DATE columns as plain 'YYYY-MM-DD' strings instead of JS Date objects
+// (pg's default parsing shifts them by the server's timezone, corrupting the date)
+types.setTypeParser(1082, (value: string) => value)
 
 const required = ['DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD'] as const
 for (const key of required) {
