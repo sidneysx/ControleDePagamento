@@ -8,6 +8,7 @@ import { useRegionais, useSeccionais } from '../hooks/useRegionaisSeccionais'
 
 const ROLES: { value: string; label: string }[] = [
   { value: 'user_padrao', label: 'Usuário Padrão' },
+  { value: 'financeiro', label: 'Financeiro' },
   { value: 'adm', label: 'Administrador' },
 ]
 

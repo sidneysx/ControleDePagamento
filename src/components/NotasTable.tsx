@@ -4,6 +4,7 @@ import * as api from '../lib/api'
 import type { Nota } from '../lib/api'
 import { formatCodeLabel, formatCpfCnpj, formatCurrency, formatDate, formatNumeroNota } from '../lib/format'
 import { useAuth } from '../context/AuthContext'
+import { isPrivilegedRole } from '../lib/roles'
 
 function EyeIcon({ className }: { className?: string }) {
   return (
@@ -242,13 +243,13 @@ function DetailModal({
   onClose,
   onDeleteRequest,
   onReload,
-  isAdmin,
+  canManage,
 }: {
   nota: Nota | null
   onClose: () => void
   onDeleteRequest: (nota: Nota) => void
   onReload: () => void
-  isAdmin: boolean
+  canManage: boolean
 }) {
   const [pdfFile, setPdfFile] = useState<{ url: string; filename: string } | null>(null)
 
@@ -316,11 +317,12 @@ function DetailModal({
                   </dd>
                 </div>
               )}
-              {isAdmin ? (
+              {canManage ? (
                 <EditableDataProgramacao key={nota.id} nota={nota} onSaved={onReload} />
               ) : (
                 <DetailRow label="Data da Programação" value={formatDate(nota.data_programacao)} />
               )}
+              <DetailRow label="Status do Pagamento" value={nota.pago ? 'Pago' : 'Pendente'} />
               <div>
                 <dt className="text-xs font-medium tracking-wide text-gray-400 uppercase">Nota Fiscal Anexada</dt>
                 <dd className="text-sm">
@@ -433,7 +435,7 @@ export default function NotasTable({
   emptyMessage?: string
 }) {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'adm'
+  const canManage = isPrivilegedRole(user?.role)
 
   const [viewing, setViewing] = useState<Nota | null>(null)
   const [deleting, setDeleting] = useState<Nota | null>(null)
@@ -511,11 +513,21 @@ export default function NotasTable({
                   <td className="px-3 py-2 text-[#0e7c86]">{formatCurrency(n.valor)}</td>
                   <td className="px-3 py-2 text-[#0e7c86]">{formatDate(n.data_emissao)}</td>
                   <td className="px-3 py-2 text-[#0e7c86]">
-                    {isAdmin ? (
-                      <EditableDataProgramacaoCell nota={n} onSaved={onReload} />
-                    ) : (
-                      formatDate(n.data_programacao)
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {canManage ? (
+                        <EditableDataProgramacaoCell nota={n} onSaved={onReload} />
+                      ) : (
+                        <span>{formatDate(n.data_programacao)}</span>
+                      )}
+                      {n.pago && (
+                        <span
+                          title="Programação paga"
+                          className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700"
+                        >
+                          Pago
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
@@ -540,7 +552,7 @@ export default function NotasTable({
         onClose={() => setViewing(null)}
         onDeleteRequest={handleDeleteRequest}
         onReload={onReload}
-        isAdmin={isAdmin}
+        canManage={canManage}
       />
       <DeleteModal nota={deleting} onClose={() => setDeleting(null)} onConfirm={handleDeleteConfirm} deleting={deleteBusy} />
 

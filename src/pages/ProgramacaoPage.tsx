@@ -4,6 +4,8 @@ import * as api from '../lib/api'
 import type { Nota, Programacao } from '../lib/api'
 import { formatCurrency, formatDate } from '../lib/format'
 import { exportNotasToExcel } from '../lib/exportNotas'
+import { useAuth } from '../context/AuthContext'
+import { isPrivilegedRole } from '../lib/roles'
 
 function toISODate(date: Date): string {
   const yyyy = date.getFullYear()
@@ -52,9 +54,14 @@ function SkeletonCards() {
 }
 
 function ProgramacaoDetail({ date, onBack }: { date: string; onBack: () => void }) {
+  const { user } = useAuth()
+  const canManage = isPrivilegedRole(user?.role)
+
   const [data, setData] = useState<Nota[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [marking, setMarking] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   function reload() {
     setLoading(true)
@@ -67,6 +74,27 @@ function ProgramacaoDetail({ date, onBack }: { date: string; onBack: () => void 
 
   useEffect(reload, [date])
 
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  const allPaid = data.length > 0 && data.every((n) => n.pago)
+
+  async function handleMarkPaid() {
+    setMarking(true)
+    try {
+      await api.marcarProgramacaoPaga(date)
+      setToast('Programação marcada como paga.')
+      reload()
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : 'Erro ao marcar programação como paga.')
+    } finally {
+      setMarking(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -74,18 +102,35 @@ function ProgramacaoDetail({ date, onBack }: { date: string; onBack: () => void 
           <button type="button" onClick={onBack} className="text-sm font-medium text-[#0e7c86] hover:underline">
             ← Voltar
           </button>
-          <h1 className="mt-1 text-xl font-semibold text-[#0e7c86]">
-            Programação de {formatWeekday(date)}, {formatDate(date)}
-          </h1>
+          <div className="mt-1 flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-[#0e7c86]">
+              Programação de {formatWeekday(date)}, {formatDate(date)}
+            </h1>
+            {allPaid && (
+              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Paga</span>
+            )}
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => exportNotasToExcel(data)}
-          disabled={data.length === 0}
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-[#0e7c86] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Baixar Excel
-        </button>
+        <div className="flex items-center gap-2">
+          {canManage && !allPaid && (
+            <button
+              type="button"
+              onClick={handleMarkPaid}
+              disabled={marking || data.length === 0}
+              className="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {marking ? 'Marcando...' : 'Marcar como Paga'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => exportNotasToExcel(data)}
+            disabled={data.length === 0}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-[#0e7c86] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Baixar Excel
+          </button>
+        </div>
       </div>
 
       <NotasTable
@@ -95,6 +140,10 @@ function ProgramacaoDetail({ date, onBack }: { date: string; onBack: () => void 
         onReload={reload}
         emptyMessage="Nenhuma nota fiscal nesta programação."
       />
+
+      {toast && (
+        <div className="fixed right-6 bottom-6 z-50 rounded-lg bg-[#0e7c86] px-4 py-3 text-sm text-white shadow-xl">{toast}</div>
+      )}
     </div>
   )
 }
@@ -154,11 +203,18 @@ export default function ProgramacaoPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-base font-semibold text-[#0e7c86]">{formatWeekday(p.data_programacao)}</span>
-                {p.data_programacao === nextWednesday && (
-                  <span className="rounded-full bg-[#f2a93a]/15 px-2 py-0.5 text-[11px] font-semibold text-[#b9740a]">
-                    Próxima
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {p.pago && (
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+                      Paga
+                    </span>
+                  )}
+                  {p.data_programacao === nextWednesday && (
+                    <span className="rounded-full bg-[#f2a93a]/15 px-2 py-0.5 text-[11px] font-semibold text-[#b9740a]">
+                      Próxima
+                    </span>
+                  )}
+                </div>
               </div>
               <span className="text-sm text-gray-500">{formatDate(p.data_programacao)}</span>
               <div className="mt-2 flex items-center justify-between border-t border-gray-100 pt-2 text-sm">

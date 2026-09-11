@@ -112,6 +112,9 @@ const sql = `
   -- solicitações de acesso: usuários que se auto-cadastram entram como 'pendente'
   -- até um admin aprovar; usuários já existentes e criados por admin já entram 'aprovado'
   ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aprovado';
+
+  -- controle de pagamento: adm e financeiro podem marcar uma programação (data) como paga
+  ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS pago BOOLEAN NOT NULL DEFAULT false;
 `
 
 async function main() {

@@ -234,6 +234,7 @@ export type Nota = {
   created_by: number
   created_by_username: string | null
   created_at: string
+  pago: boolean
 }
 
 export function createNota(payload: NotaPayload, files: NotaFiles = {}) {
@@ -268,10 +269,15 @@ export type Programacao = {
   data_programacao: string
   total_notas: string
   valor_total: string
+  pago: boolean
 }
 
 export function listProgramacoes() {
   return request<{ data: Programacao[] }>('/notas/programacoes')
+}
+
+export function marcarProgramacaoPaga(dataProgramacao: string) {
+  return request<{ updated: number }>(`/notas/programacoes/${dataProgramacao}/pagar`, { method: 'PUT' })
 }
 
 export function deleteNota(id: number) {

@@ -31,20 +31,28 @@ function includes<T extends string>(list: readonly T[], value: string): value is
 }
 
 const ADMIN_ROLE = 'adm'
+const FINANCEIRO_ROLE = 'financeiro'
 
-function isAdmin(role: string): boolean {
-  return role === ADMIN_ROLE
+// adm e financeiro têm privilégios elevados (editar programação, apagar, marcar como paga);
+// financeiro fica restrito à própria regional, adm não tem restrição nenhuma
+function isPrivileged(role: string): boolean {
+  return role === ADMIN_ROLE || role === FINANCEIRO_ROLE
 }
 
-async function getCurrentUser(
-  userId: number | undefined,
-): Promise<{ role: string; regional: string; seccional: string } | null> {
+type CurrentUser = { role: string; regional: string; seccional: string }
+
+async function getCurrentUser(userId: number | undefined): Promise<CurrentUser | null> {
   if (!userId) return null
-  const result = await pool.query<{ role: string; regional: string; seccional: string }>(
-    'SELECT role, regional, seccional FROM users WHERE id = $1',
-    [userId],
-  )
+  const result = await pool.query<CurrentUser>('SELECT role, regional, seccional FROM users WHERE id = $1', [userId])
   return result.rows[0] ?? null
+}
+
+// retorna os valores de regional/seccional que devem ser forçados na consulta para este usuário;
+// null significa "sem restrição nesse campo"
+function getScope(currentUser: CurrentUser): { regional: string | null; seccional: string | null } {
+  if (currentUser.role === ADMIN_ROLE) return { regional: null, seccional: null }
+  if (currentUser.role === FINANCEIRO_ROLE) return { regional: currentUser.regional, seccional: null }
+  return { regional: currentUser.regional, seccional: currentUser.seccional }
 }
 
 function uploadMiddleware(req: Request, res: Response, next: NextFunction) {
@@ -249,10 +257,9 @@ notasRouter.get('/', async (req, res) => {
   let regional = str(req.query.regional)
   let seccional = str(req.query.seccional)
 
-  if (!isAdmin(currentUser.role)) {
-    regional = currentUser.regional
-    seccional = currentUser.seccional
-  }
+  const scope = getScope(currentUser)
+  if (scope.regional !== null) regional = scope.regional
+  if (scope.seccional !== null) seccional = scope.seccional
 
   const conditions: string[] = []
   const params: unknown[] = []
@@ -302,15 +309,20 @@ notasRouter.get('/programacoes', async (req, res) => {
     return
   }
 
+  const scope = getScope(currentUser)
   const params: unknown[] = []
   let whereClause = 'WHERE data_programacao IS NOT NULL'
-  if (!isAdmin(currentUser.role)) {
-    params.push(currentUser.regional, currentUser.seccional)
-    whereClause += ` AND regional = $${params.length - 1} AND seccional = $${params.length}`
+  if (scope.regional !== null) {
+    params.push(scope.regional)
+    whereClause += ` AND regional = $${params.length}`
+  }
+  if (scope.seccional !== null) {
+    params.push(scope.seccional)
+    whereClause += ` AND seccional = $${params.length}`
   }
 
-  const result = await pool.query<{ data_programacao: string; total_notas: string; valor_total: string }>(
-    `SELECT data_programacao, count(*) AS total_notas, sum(valor) AS valor_total
+  const result = await pool.query<{ data_programacao: string; total_notas: string; valor_total: string; pago: boolean }>(
+    `SELECT data_programacao, count(*) AS total_notas, sum(valor) AS valor_total, bool_and(pago) AS pago
      FROM notas_fiscais
      ${whereClause}
      GROUP BY data_programacao
@@ -318,6 +330,43 @@ notasRouter.get('/programacoes', async (req, res) => {
     params,
   )
   res.json({ data: result.rows })
+})
+
+notasRouter.put('/programacoes/:data/pagar', async (req, res) => {
+  const data = req.params.data
+  if (Number.isNaN(Date.parse(data))) {
+    res.status(400).json({ error: 'Data inválida.' })
+    return
+  }
+
+  const currentUser = await getCurrentUser(req.userId)
+  if (!currentUser) {
+    res.status(401).json({ error: 'Not authenticated' })
+    return
+  }
+  if (!isPrivileged(currentUser.role)) {
+    res.status(403).json({ error: 'Apenas administradores e financeiro podem marcar uma programação como paga.' })
+    return
+  }
+
+  const scope = getScope(currentUser)
+  const conditions = ['data_programacao = $1']
+  const params: unknown[] = [data]
+  if (scope.regional !== null) {
+    params.push(scope.regional)
+    conditions.push(`regional = $${params.length}`)
+  }
+  if (scope.seccional !== null) {
+    params.push(scope.seccional)
+    conditions.push(`seccional = $${params.length}`)
+  }
+
+  const updated = await pool.query(`UPDATE notas_fiscais SET pago = true WHERE ${conditions.join(' AND ')} RETURNING id`, params)
+  if (updated.rowCount === 0) {
+    res.status(404).json({ error: 'Nenhuma nota fiscal encontrada para essa programação.' })
+    return
+  }
+  res.json({ updated: updated.rowCount })
 })
 
 notasRouter.put('/:id/data-programacao', async (req, res) => {
@@ -332,8 +381,8 @@ notasRouter.put('/:id/data-programacao', async (req, res) => {
     res.status(401).json({ error: 'Not authenticated' })
     return
   }
-  if (!isAdmin(currentUser.role)) {
-    res.status(403).json({ error: 'Apenas administradores podem editar a data da programação.' })
+  if (!isPrivileged(currentUser.role)) {
+    res.status(403).json({ error: 'Apenas administradores e financeiro podem editar a data da programação.' })
     return
   }
 
@@ -343,10 +392,22 @@ notasRouter.put('/:id/data-programacao', async (req, res) => {
     return
   }
 
+  const scope = getScope(currentUser)
+  const conditions = ['id = $2']
+  const params: unknown[] = [data_programacao, id]
+  if (scope.regional !== null) {
+    params.push(scope.regional)
+    conditions.push(`regional = $${params.length}`)
+  }
+  if (scope.seccional !== null) {
+    params.push(scope.seccional)
+    conditions.push(`seccional = $${params.length}`)
+  }
+
   const updated = await pool.query(
-    `UPDATE notas_fiscais SET data_programacao = $1 WHERE id = $2
+    `UPDATE notas_fiscais SET data_programacao = $1 WHERE ${conditions.join(' AND ')}
      RETURNING *`,
-    [data_programacao, id],
+    params,
   )
   const row = updated.rows[0]
   if (!row) {
@@ -369,11 +430,16 @@ notasRouter.delete('/:id', async (req, res) => {
     return
   }
 
+  const scope = getScope(currentUser)
   const conditions = ['id = $1']
   const params: unknown[] = [id]
-  if (!isAdmin(currentUser.role)) {
-    params.push(currentUser.regional, currentUser.seccional)
-    conditions.push(`regional = $${params.length - 1}`, `seccional = $${params.length}`)
+  if (scope.regional !== null) {
+    params.push(scope.regional)
+    conditions.push(`regional = $${params.length}`)
+  }
+  if (scope.seccional !== null) {
+    params.push(scope.seccional)
+    conditions.push(`seccional = $${params.length}`)
   }
 
   const deleted = await pool.query<{ boleto_arquivo: string | null; nota_fiscal_arquivo: string | null }>(
@@ -420,7 +486,11 @@ notasRouter.get('/:id/arquivo/:campo', async (req, res) => {
     res.status(404).json({ error: 'Arquivo não encontrado.' })
     return
   }
-  if (!isAdmin(currentUser.role) && (row.regional !== currentUser.regional || row.seccional !== currentUser.seccional)) {
+  const scope = getScope(currentUser)
+  if (
+    (scope.regional !== null && row.regional !== scope.regional) ||
+    (scope.seccional !== null && row.seccional !== scope.seccional)
+  ) {
     res.status(404).json({ error: 'Arquivo não encontrado.' })
     return
   }

@@ -9,6 +9,7 @@ import { useRegionais, useSeccionais } from '../hooks/useRegionaisSeccionais'
 import { currencyInputToDecimalString, formatCodeLabel, formatCpfCnpj, formatCurrencyInput, formatNumeroNota } from '../lib/format'
 import { exportNotasToExcel } from '../lib/exportNotas'
 import { useAuth } from '../context/AuthContext'
+import { isPrivilegedRole } from '../lib/roles'
 
 function alphaSort(list: string[]): string[] {
   return [...list].sort((a, b) => a.localeCompare(b, 'pt-BR'))
@@ -692,7 +693,9 @@ function FormModal({ open, onClose, onSaved }: { open: boolean; onClose: () => v
 
 export default function NotasFiscaisPage() {
   const { user } = useAuth()
+  const canManage = isPrivilegedRole(user?.role)
   const isAdmin = user?.role === 'adm'
+  const isFinanceiro = user?.role === 'financeiro'
 
   const [formOpen, setFormOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -708,6 +711,11 @@ export default function NotasFiscaisPage() {
 
   const { regionais: filterRegionais, loading: filterRegionaisLoading } = useRegionais()
   const { seccionais: filterSeccionais, loading: filterSeccionaisLoading } = useSeccionais(filterRegional)
+
+  // financeiro não escolhe regional (é sempre a dele) — trava automaticamente pra habilitar o filtro de seccional
+  useEffect(() => {
+    if (isFinanceiro && user?.regional) setFilterRegional(user.regional)
+  }, [isFinanceiro, user?.regional])
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 350)
@@ -737,12 +745,12 @@ export default function NotasFiscaisPage() {
     reload()
   }
 
-  const hasFilters = !!(searchInput || dataProgramacao || filterRegional || filterSeccional)
+  const hasFilters = !!(searchInput || dataProgramacao || (isAdmin && filterRegional) || filterSeccional)
 
   function clearFilters() {
     setSearchInput('')
     setDataProgramacao('')
-    setFilterRegional('')
+    if (isAdmin) setFilterRegional('')
     setFilterSeccional('')
   }
 
@@ -776,51 +784,51 @@ export default function NotasFiscaisPage() {
         </div>
 
         {isAdmin && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="filter_regional" className="text-xs font-medium text-[#0e7c86]">
-                Regional
-              </label>
-              <select
-                id="filter_regional"
-                value={filterRegional}
-                onChange={(e) => {
-                  setFilterRegional(e.target.value)
-                  setFilterSeccional('')
-                }}
-                className={selectClass}
-              >
-                <option value="">{filterRegionaisLoading ? 'Carregando...' : 'Todas'}</option>
-                {filterRegionais.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label htmlFor="filter_seccional" className="text-xs font-medium text-[#0e7c86]">
-                Seccional
-              </label>
-              <select
-                id="filter_seccional"
-                value={filterSeccional}
-                onChange={(e) => setFilterSeccional(e.target.value)}
-                disabled={!filterRegional}
-                className={`${selectClass} disabled:cursor-not-allowed disabled:opacity-50`}
-              >
-                <option value="">
-                  {!filterRegional ? 'Selecione a Regional' : filterSeccionaisLoading ? 'Carregando...' : 'Todas'}
+          <div className="flex flex-col gap-1">
+            <label htmlFor="filter_regional" className="text-xs font-medium text-[#0e7c86]">
+              Regional
+            </label>
+            <select
+              id="filter_regional"
+              value={filterRegional}
+              onChange={(e) => {
+                setFilterRegional(e.target.value)
+                setFilterSeccional('')
+              }}
+              className={selectClass}
+            >
+              <option value="">{filterRegionaisLoading ? 'Carregando...' : 'Todas'}</option>
+              {filterRegionais.map((r) => (
+                <option key={r} value={r}>
+                  {r}
                 </option>
-                {filterSeccionais.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {canManage && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor="filter_seccional" className="text-xs font-medium text-[#0e7c86]">
+              Seccional
+            </label>
+            <select
+              id="filter_seccional"
+              value={filterSeccional}
+              onChange={(e) => setFilterSeccional(e.target.value)}
+              disabled={!filterRegional}
+              className={`${selectClass} disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              <option value="">
+                {!filterRegional ? 'Selecione a Regional' : filterSeccionaisLoading ? 'Carregando...' : 'Todas'}
+              </option>
+              {filterSeccionais.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
 
         <div className="flex flex-col gap-1">

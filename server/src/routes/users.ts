@@ -8,7 +8,7 @@ usersRouter.use(requireAuth, requireAdmin)
 
 const PASSWORD_RULE = /^(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/
 const PASSWORD_HINT = 'A senha deve ter ao menos 8 caracteres, incluindo um número e um caractere especial.'
-const ROLES = ['adm', 'user_padrao'] as const
+const ROLES = ['adm', 'financeiro', 'user_padrao'] as const
 
 type UserRow = {
   id: number
