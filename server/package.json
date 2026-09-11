@@ -8,7 +8,8 @@
     "build": "tsc -b && node -e \"require('fs').cpSync('src/data','dist/data',{recursive:true})\"",
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
-    "db:drop-all": "tsx src/drop-all-tables.ts"
+    "db:drop-all": "tsx src/drop-all-tables.ts",
+    "set-admin": "tsx src/set-admin.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

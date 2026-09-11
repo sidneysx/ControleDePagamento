@@ -4,6 +4,7 @@ export type User = {
   email: string
   regional: string
   seccional: string
+  setor: string | null
   role: string
 }
 
@@ -276,8 +277,54 @@ export function deleteNota(id: number) {
   return request<void>(`/notas/${id}`, { method: 'DELETE' })
 }
 
+export function updateNotaDataProgramacao(id: number, dataProgramacao: string) {
+  return request<{ nota: Nota }>(`/notas/${id}/data-programacao`, {
+    method: 'PUT',
+    body: JSON.stringify({ data_programacao: dataProgramacao }),
+  })
+}
+
 export function notaArquivoUrl(id: number, campo: 'boleto' | 'nota_fiscal') {
   return `/api/notas/${id}/arquivo/${campo}`
+}
+
+export type UserPayload = {
+  username: string
+  email: string
+  password: string
+  regional: string
+  seccional: string
+  setor: string
+  role: string
+}
+
+export function listUsers() {
+  return request<{ data: User[] }>('/users')
+}
+
+export function createUser(payload: UserPayload) {
+  return request<{ user: User }>('/users', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function updateUser(id: number, payload: Omit<UserPayload, 'password'>) {
+  return request<{ user: User }>(`/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function updateUserPassword(id: number, password: string) {
+  return request<void>(`/users/${id}/senha`, {
+    method: 'PUT',
+    body: JSON.stringify({ password }),
+  })
+}
+
+export function deleteUser(id: number) {
+  return request<void>(`/users/${id}`, { method: 'DELETE' })
 }
 
 export type Regional = { id: number; nome: string }

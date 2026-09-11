@@ -30,6 +30,20 @@ function includes<T extends string>(list: readonly T[], value: string): value is
   return (list as readonly string[]).includes(value)
 }
 
+const ADMIN_ROLE = 'adm'
+
+function isAdmin(role: string): boolean {
+  return role === ADMIN_ROLE
+}
+
+async function getCurrentUser(userId: number | undefined): Promise<{ role: string; regional: string } | null> {
+  if (!userId) return null
+  const result = await pool.query<{ role: string; regional: string }>('SELECT role, regional FROM users WHERE id = $1', [
+    userId,
+  ])
+  return result.rows[0] ?? null
+}
+
 function uploadMiddleware(req: Request, res: Response, next: NextFunction) {
   uploadNotaArquivos(req, res, (err: unknown) => {
     if (err) {
@@ -221,10 +235,20 @@ notasRouter.post('/', uploadMiddleware, async (req, res) => {
 })
 
 notasRouter.get('/', async (req, res) => {
+  const currentUser = await getCurrentUser(req.userId)
+  if (!currentUser) {
+    res.status(401).json({ error: 'Not authenticated' })
+    return
+  }
+
   const search = str(req.query.search)
   const dataProgramacao = str(req.query.data_programacao)
-  const regional = str(req.query.regional)
+  let regional = str(req.query.regional)
   const seccional = str(req.query.seccional)
+
+  if (!isAdmin(currentUser.role)) {
+    regional = currentUser.regional
+  }
 
   const conditions: string[] = []
   const params: unknown[] = []
@@ -267,15 +291,65 @@ notasRouter.get('/', async (req, res) => {
   res.json({ data: result.rows })
 })
 
-notasRouter.get('/programacoes', async (_req, res) => {
+notasRouter.get('/programacoes', async (req, res) => {
+  const currentUser = await getCurrentUser(req.userId)
+  if (!currentUser) {
+    res.status(401).json({ error: 'Not authenticated' })
+    return
+  }
+
+  const params: unknown[] = []
+  let whereClause = 'WHERE data_programacao IS NOT NULL'
+  if (!isAdmin(currentUser.role)) {
+    params.push(currentUser.regional)
+    whereClause += ` AND regional = $${params.length}`
+  }
+
   const result = await pool.query<{ data_programacao: string; total_notas: string; valor_total: string }>(
     `SELECT data_programacao, count(*) AS total_notas, sum(valor) AS valor_total
      FROM notas_fiscais
-     WHERE data_programacao IS NOT NULL
+     ${whereClause}
      GROUP BY data_programacao
      ORDER BY data_programacao DESC`,
+    params,
   )
   res.json({ data: result.rows })
+})
+
+notasRouter.put('/:id/data-programacao', async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: 'ID inválido.' })
+    return
+  }
+
+  const currentUser = await getCurrentUser(req.userId)
+  if (!currentUser) {
+    res.status(401).json({ error: 'Not authenticated' })
+    return
+  }
+  if (!isAdmin(currentUser.role)) {
+    res.status(403).json({ error: 'Apenas administradores podem editar a data da programação.' })
+    return
+  }
+
+  const data_programacao = str(req.body?.data_programacao)
+  if (!data_programacao || Number.isNaN(Date.parse(data_programacao))) {
+    res.status(400).json({ error: 'Data da programação inválida.' })
+    return
+  }
+
+  const updated = await pool.query(
+    `UPDATE notas_fiscais SET data_programacao = $1 WHERE id = $2
+     RETURNING *`,
+    [data_programacao, id],
+  )
+  const row = updated.rows[0]
+  if (!row) {
+    res.status(404).json({ error: 'Nota fiscal não encontrada.' })
+    return
+  }
+  res.json({ nota: row })
 })
 
 notasRouter.delete('/:id', async (req, res) => {
@@ -285,9 +359,22 @@ notasRouter.delete('/:id', async (req, res) => {
     return
   }
 
+  const currentUser = await getCurrentUser(req.userId)
+  if (!currentUser) {
+    res.status(401).json({ error: 'Not authenticated' })
+    return
+  }
+
+  const conditions = ['id = $1']
+  const params: unknown[] = [id]
+  if (!isAdmin(currentUser.role)) {
+    params.push(currentUser.regional)
+    conditions.push(`regional = $${params.length}`)
+  }
+
   const deleted = await pool.query<{ boleto_arquivo: string | null; nota_fiscal_arquivo: string | null }>(
-    'DELETE FROM notas_fiscais WHERE id = $1 RETURNING boleto_arquivo, nota_fiscal_arquivo',
-    [id],
+    `DELETE FROM notas_fiscais WHERE ${conditions.join(' AND ')} RETURNING boleto_arquivo, nota_fiscal_arquivo`,
+    params,
   )
   const row = deleted.rows[0]
   if (!row) {
@@ -312,14 +399,24 @@ notasRouter.get('/:id/arquivo/:campo', async (req, res) => {
     return
   }
 
+  const currentUser = await getCurrentUser(req.userId)
+  if (!currentUser) {
+    res.status(401).json({ error: 'Not authenticated' })
+    return
+  }
+
   const column = campo === 'boleto' ? 'boleto_arquivo' : 'nota_fiscal_arquivo'
   const nameColumn = campo === 'boleto' ? 'boleto_arquivo_nome' : 'nota_fiscal_arquivo_nome'
-  const result = await pool.query<{ arquivo: string | null; nome: string | null }>(
-    `SELECT ${column} AS arquivo, ${nameColumn} AS nome FROM notas_fiscais WHERE id = $1`,
+  const result = await pool.query<{ arquivo: string | null; nome: string | null; regional: string }>(
+    `SELECT ${column} AS arquivo, ${nameColumn} AS nome, regional FROM notas_fiscais WHERE id = $1`,
     [id],
   )
   const row = result.rows[0]
   if (!row?.arquivo) {
+    res.status(404).json({ error: 'Arquivo não encontrado.' })
+    return
+  }
+  if (!isAdmin(currentUser.role) && row.regional !== currentUser.regional) {
     res.status(404).json({ error: 'Arquivo não encontrado.' })
     return
   }

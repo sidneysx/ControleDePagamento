@@ -52,6 +52,16 @@ function CalendarIcon({ className }: { className?: string }) {
   )
 }
 
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M3 19c1-3.3 3.5-5 6-5s5 1.7 6 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M15.5 4.8a3.2 3.2 0 010 6.4M17.5 14c2 .4 3.6 1.9 4.5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: GridIcon, end: true },
   { to: '/notas-fiscais', label: 'Notas Fiscais', icon: InvoiceIcon, end: false },
@@ -59,7 +69,12 @@ const NAV_ITEMS = [
   { to: '/programacao', label: 'Programação', icon: CalendarIcon, end: false },
 ] as const
 
+const ADMIN_NAV_ITEM = { to: '/usuarios', label: 'Usuários', icon: UsersIcon, end: false } as const
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useAuth()
+  const items = user?.role === 'adm' ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS
+
   return (
     <>
       <div className="flex items-center px-6 py-6">
@@ -67,7 +82,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-3">
-        {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+        {items.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}

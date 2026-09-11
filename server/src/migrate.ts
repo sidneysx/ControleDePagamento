@@ -98,6 +98,16 @@ const sql = `
   ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS data_programacao DATE;
   ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS nota_fiscal_arquivo TEXT;
   ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS nota_fiscal_arquivo_nome TEXT;
+
+  -- padroniza o papel padrão (não-admin) como 'user_padrao'; 'adm' tem acesso irrestrito
+  ALTER TABLE users ALTER COLUMN role SET DEFAULT 'user_padrao';
+  UPDATE users SET role = 'user_padrao' WHERE role = 'user';
+
+  -- setor do usuário (ex: TI, Financeiro, Compras)
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS setor TEXT;
+
+  -- created_by tinha ON DELETE SET NULL mas era NOT NULL, o que quebraria ao apagar um usuário
+  ALTER TABLE notas_fiscais ALTER COLUMN created_by DROP NOT NULL;
 `
 
 async function main() {

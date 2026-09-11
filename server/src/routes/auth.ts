@@ -25,6 +25,7 @@ type UserRow = {
   email: string
   regional: string
   seccional: string
+  setor: string | null
   role: string
 }
 
@@ -57,7 +58,7 @@ authRouter.post('/register', async (req, res) => {
     const result = await pool.query<UserRow>(
       `INSERT INTO users (username, email, password_hash, regional, seccional)
        VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, username, email, regional, seccional, role`,
+       RETURNING id, username, email, regional, seccional, setor, role`,
       [username.trim(), email.toLowerCase().trim(), passwordHash, regional.trim(), seccional.trim()],
     )
     const user = result.rows[0]
@@ -83,7 +84,7 @@ authRouter.post('/login', async (req, res) => {
   }
 
   const result = await pool.query<UserRow & { password_hash: string }>(
-    'SELECT id, username, email, regional, seccional, role, password_hash FROM users WHERE username = $1',
+    'SELECT id, username, email, regional, seccional, setor, role, password_hash FROM users WHERE username = $1',
     [username.trim()],
   )
   const row = result.rows[0]
@@ -100,7 +101,15 @@ authRouter.post('/login', async (req, res) => {
     maxAge: remember ? REMEMBER_MAX_AGE : DEFAULT_MAX_AGE,
   })
   res.json({
-    user: { id: row.id, username: row.username, email: row.email, regional: row.regional, seccional: row.seccional },
+    user: {
+      id: row.id,
+      username: row.username,
+      email: row.email,
+      regional: row.regional,
+      seccional: row.seccional,
+      setor: row.setor,
+      role: row.role,
+    },
   })
 })
 
@@ -111,7 +120,7 @@ authRouter.post('/logout', (_req, res) => {
 
 authRouter.get('/me', requireAuth, async (req, res) => {
   const result = await pool.query<UserRow>(
-    'SELECT id, username, email, regional, seccional, role FROM users WHERE id = $1',
+    'SELECT id, username, email, regional, seccional, setor, role FROM users WHERE id = $1',
     [req.userId],
   )
   const user = result.rows[0]

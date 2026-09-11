@@ -3,6 +3,7 @@ import Modal from './Modal'
 import * as api from '../lib/api'
 import type { Nota } from '../lib/api'
 import { formatCodeLabel, formatCpfCnpj, formatCurrency, formatDate, formatNumeroNota } from '../lib/format'
+import { useAuth } from '../context/AuthContext'
 
 function EyeIcon({ className }: { className?: string }) {
   return (
@@ -71,14 +72,91 @@ function PdfFileLinks({
   )
 }
 
+function EditableDataProgramacao({ nota, onSaved }: { nota: Nota; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(nota.data_programacao)
+  const [current, setCurrent] = useState(nota.data_programacao)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSave() {
+    if (!value) return
+    setSaving(true)
+    setError(null)
+    try {
+      await api.updateNotaDataProgramacao(nota.id, value)
+      setCurrent(value)
+      setEditing(false)
+      onSaved()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao atualizar.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div>
+        <dt className="text-xs font-medium tracking-wide text-gray-400 uppercase">Data da Programação</dt>
+        <dd className="flex items-center gap-2 text-sm text-[#0e7c86]">
+          {formatDate(current)}
+          <button
+            type="button"
+            onClick={() => {
+              setValue(current)
+              setEditing(true)
+            }}
+            className="text-xs font-medium text-[#0e7c86] hover:underline"
+          >
+            Editar
+          </button>
+        </dd>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <dt className="text-xs font-medium tracking-wide text-gray-400 uppercase">Data da Programação</dt>
+      <dd className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="rounded-lg border border-gray-200 px-2 py-1 text-sm text-[#0e7c86] outline-none focus:border-[#0e7c86] focus:ring-2 focus:ring-[#0e7c86]/20"
+          />
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg bg-[#0e7c86] px-2 py-1 text-xs font-medium text-white hover:bg-[#0a616a] disabled:opacity-50"
+          >
+            {saving ? '...' : 'Salvar'}
+          </button>
+          <button type="button" onClick={() => setEditing(false)} className="text-xs text-gray-500 hover:underline">
+            Cancelar
+          </button>
+        </div>
+        {error && <span className="text-xs text-red-500">{error}</span>}
+      </dd>
+    </div>
+  )
+}
+
 function DetailModal({
   nota,
   onClose,
   onDeleteRequest,
+  onReload,
+  isAdmin,
 }: {
   nota: Nota | null
   onClose: () => void
   onDeleteRequest: (nota: Nota) => void
+  onReload: () => void
+  isAdmin: boolean
 }) {
   const [pdfFile, setPdfFile] = useState<{ url: string; filename: string } | null>(null)
 
@@ -146,7 +224,11 @@ function DetailModal({
                   </dd>
                 </div>
               )}
-              <DetailRow label="Data da Programação" value={formatDate(nota.data_programacao)} />
+              {isAdmin ? (
+                <EditableDataProgramacao key={nota.id} nota={nota} onSaved={onReload} />
+              ) : (
+                <DetailRow label="Data da Programação" value={formatDate(nota.data_programacao)} />
+              )}
               <div>
                 <dt className="text-xs font-medium tracking-wide text-gray-400 uppercase">Nota Fiscal Anexada</dt>
                 <dd className="text-sm">
@@ -258,6 +340,9 @@ export default function NotasTable({
   onReload: () => void
   emptyMessage?: string
 }) {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'adm'
+
   const [viewing, setViewing] = useState<Nota | null>(null)
   const [deleting, setDeleting] = useState<Nota | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
@@ -352,7 +437,13 @@ export default function NotasTable({
         </table>
       </div>
 
-      <DetailModal nota={viewing} onClose={() => setViewing(null)} onDeleteRequest={handleDeleteRequest} />
+      <DetailModal
+        nota={viewing}
+        onClose={() => setViewing(null)}
+        onDeleteRequest={handleDeleteRequest}
+        onReload={onReload}
+        isAdmin={isAdmin}
+      />
       <DeleteModal nota={deleting} onClose={() => setDeleting(null)} onConfirm={handleDeleteConfirm} deleting={deleteBusy} />
 
       {toast && (
